@@ -1,0 +1,10 @@
+---
+- name: Map scrutiny_collector_state to task file
+  ansible.builtin.set_fact:
+    scrutiny_collector_task_file: >-
+      {{ 'install.yaml' if scrutiny_collector_state == 'present' or scrutiny_collector_state == 'latest'
+         else 'uninstall.yaml' if scrutiny_collector_state == 'absent'
+         else 'install.yaml' }}
+
+- name: Scrutiny Collector | Ensure state is correct
+  ansible.builtin.include_tasks: "{{ scrutiny_collector_task_file }}"

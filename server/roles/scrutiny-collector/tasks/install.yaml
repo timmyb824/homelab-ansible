@@ -1,0 +1,61 @@
+---
+- name: Scrutiny Collector | Assert supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+      - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    quiet: true
+    fail_msg: "scrutiny-collector role only supports Debian/Ubuntu."
+
+- name: Scrutiny Collector | Assert supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['architecture'] in ['x86_64', 'amd64']
+    quiet: true
+    fail_msg: "scrutiny-collector role only supports non-ARM amd64/x86_64 hosts."
+
+- name: Scrutiny Collector | Install dependencies
+  ansible.builtin.apt:
+    name:
+      - cron
+      - smartmontools
+    state: present
+    update_cache: true
+  become: true
+
+- name: Scrutiny Collector | Ensure install dir exists
+  ansible.builtin.file:
+    path: "{{ scrutiny_collector_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Scrutiny Collector | Download collector binary
+  ansible.builtin.get_url:
+    url: "{{ scrutiny_collector_binary_url }}"
+    dest: "{{ scrutiny_collector_install_dir }}/{{ scrutiny_collector_binary_name }}"
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Start Collector | Run and Populate WebApp
+  ansible.builtin.command:
+    argv:
+      - "{{ scrutiny_collector_install_dir }}/{{ scrutiny_collector_binary_name }}"
+      - run
+      - --api-endpoint
+      - "{{ scrutiny_collector_api_endpoint }}"
+  become: true
+  when: scrutiny_collector_run_once | bool
+
+- name: Scrutiny Collector | Install hourly cron
+  ansible.builtin.cron:
+    name: "Scrutiny Collector"
+    minute: "0"
+    hour: "*"
+    user: root
+    job: ". /etc/profile; {{ scrutiny_collector_install_dir }}/{{ scrutiny_collector_binary_name }} run --api-endpoint {{ scrutiny_collector_api_endpoint | quote }}"
+  become: true

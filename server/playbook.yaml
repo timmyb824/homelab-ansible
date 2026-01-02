@@ -29,6 +29,10 @@
       tags: [k3s_image_prune, k3s, maintenance]
       when: "'k8s' in group_names"
 
+    - role: scrutiny-collector
+      scrutiny_collector_state: present # or latest/absent
+      tags: [scrutiny-collector, monitoring]
+
 - name: Upgrade Prometheus
   hosts: prometheus
   become: true

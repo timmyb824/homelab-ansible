@@ -1,0 +1,12 @@
+---
+- name: Scrutiny Collector | Remove cron
+  ansible.builtin.cron:
+    name: "Scrutiny Collector"
+    state: absent
+  become: true
+
+- name: Scrutiny Collector | Remove collector binary
+  ansible.builtin.file:
+    path: "{{ scrutiny_collector_install_dir }}/{{ scrutiny_collector_binary_name }}"
+    state: absent
+  become: true
