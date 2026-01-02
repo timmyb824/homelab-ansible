@@ -4,6 +4,9 @@ scrutiny_collector_state: present
 # Example: "http://localhost:8080"
 scrutiny_collector_api_endpoint: "http://192.168.86.174:8091"
 
+# Environment variable consumed by the collector.
+scrutiny_collector_host_id: "scrutiny-collector-{{ ansible_hostname | default(inventory_hostname) }}"
+
 # If true, run the collector once during the role execution (in addition to cron).
 scrutiny_collector_run_once: true
 

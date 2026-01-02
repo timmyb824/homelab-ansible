@@ -175,17 +175,17 @@ all:
           ansible_host: proxmox2.homelab.lan
           ansible_connection: ssh
           ansible_port: 22
-          ansible_user: tbryant
+          ansible_user: root
           ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
         proxmox3:
           ansible_host: proxmox3.homelab.lan
           ansible_connection: ssh
           ansible_port: 22
-          ansible_user: tbryant
+          ansible_user: root
           ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
         proxmox4:
           ansible_host: proxmox4.homelab.lan
           ansible_connection: ssh
           ansible_port: 22
-          ansible_user: tbryant
+          ansible_user: root
           ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
