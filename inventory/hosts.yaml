@@ -151,12 +151,6 @@ all:
           ansible_port: 22
           ansible_user: tbryant
           ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
-        k3s-0-dev:
-          ansible_host: 192.168.86.137
-          ansible_connection: ssh
-          ansible_port: 22
-          ansible_user: tbryant
-          ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
     oci:
       hosts:
         homelab-oci02:
