@@ -1,0 +1,42 @@
+---
+# OpenClaw default variables
+
+# CI testing mode - skips tasks that require systemd, Docker-in-Docker, or kernel access
+ci_test: false
+
+# Tailscale settings
+# WARNING: Tasks using tailscale_authkey MUST set no_log: true to prevent credential exposure
+tailscale_enabled: false  # Set to true to install and configure Tailscale
+tailscale_authkey: ""  # Optional: set to auto-connect during installation
+
+# Node.js version
+nodejs_version: "22.x"
+
+# OpenClaw settings
+openclaw_port: 3000
+
+# OpenClaw config directory
+openclaw_config_dir: "{{ openclaw_home }}/.openclaw"
+
+# User settings (will be created as system user)
+openclaw_user: openclaw
+openclaw_home: /home/openclaw
+
+# Installation mode: 'release' or 'development'
+# release: Install via pnpm install -g openclaw@latest
+# development: Clone repo, build from source, link globally
+openclaw_install_mode: "release"
+
+# Development mode settings (only used when openclaw_install_mode: development)
+openclaw_repo_url: "https://github.com/openclaw/openclaw.git"
+openclaw_repo_branch: "main"
+openclaw_code_dir: "{{ openclaw_home }}/code"
+openclaw_repo_dir: "{{ openclaw_code_dir }}/openclaw"
+
+# SSH keys for openclaw user
+# Add your public SSH keys here to allow SSH access as openclaw user
+# Example:
+#   openclaw_ssh_keys:
+#     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@host"
+#     - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDxxxxxxxxxxxxxxxxxxxxxxx user@host"
+openclaw_ssh_keys: []

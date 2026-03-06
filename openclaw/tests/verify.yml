@@ -1,0 +1,76 @@
+---
+- name: Verify playbook results
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    openclaw_user: openclaw
+    openclaw_home: /home/openclaw
+
+  tasks:
+    - name: Verify openclaw user exists
+      ansible.builtin.command: "id {{ openclaw_user }}"
+      changed_when: false
+
+    - name: Verify critical packages installed
+      ansible.builtin.command: "dpkg -s {{ item }}"
+      loop: [git, curl, vim, jq, tmux, tree, htop]
+      changed_when: false
+
+    - name: Verify Node.js installed
+      ansible.builtin.command: node --version
+      changed_when: false
+
+    - name: Verify pnpm installed
+      ansible.builtin.command: pnpm --version
+      changed_when: false
+
+    - name: Verify openclaw directory structure
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+      loop:
+        - { path: "{{ openclaw_home }}/.openclaw", mode: "0755" }
+        - { path: "{{ openclaw_home }}/.openclaw/sessions" }
+        - { path: "{{ openclaw_home }}/.openclaw/credentials", mode: "0700" }
+        - { path: "{{ openclaw_home }}/.openclaw/data" }
+        - { path: "{{ openclaw_home }}/.openclaw/logs" }
+        - { path: "{{ openclaw_home }}/.openclaw/agents" }
+        - { path: "{{ openclaw_home }}/.openclaw/agents/main" }
+        - { path: "{{ openclaw_home }}/.openclaw/agents/main/agent", mode: "0700" }
+        - { path: "{{ openclaw_home }}/.openclaw/workspace" }
+        - { path: "{{ openclaw_home }}/.ssh", mode: "0700" }
+      register: dir_checks
+
+    - name: Assert directories exist
+      ansible.builtin.assert:
+        that: item.stat.exists and item.stat.isdir
+        fail_msg: "Directory missing: {{ item.item.path }}"
+      loop: "{{ dir_checks.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+
+    - name: Assert restricted directories have correct permissions
+      ansible.builtin.assert:
+        that:
+          - dir_checks.results[2].stat.mode == '0700'
+          - dir_checks.results[7].stat.mode == '0700'
+        fail_msg: "credentials and agents/main/agent dirs should be 0700"
+
+    - name: Verify sudoers file exists and is valid
+      ansible.builtin.command: "visudo -cf /etc/sudoers.d/{{ openclaw_user }}"
+      changed_when: false
+
+    - name: Verify global vim config exists
+      ansible.builtin.stat:
+        path: /etc/vim/vimrc.local
+      register: vimrc
+    - ansible.builtin.assert:
+        that: vimrc.stat.exists
+
+    - name: Verify git global config
+      ansible.builtin.command: git config --global init.defaultBranch
+      changed_when: false
+      register: git_branch
+    - ansible.builtin.assert:
+        that: git_branch.stdout == 'main'

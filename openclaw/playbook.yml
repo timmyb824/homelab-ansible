@@ -1,0 +1,178 @@
+---
+- name: Install OpenClaw with Docker and UFW firewall
+  hosts: openclaw
+  #connection: local
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  environment:
+    TERM: xterm-256color
+    COLORTERM: truecolor
+
+  pre_tasks:
+    - name: Enable color terminal for current session
+      ansible.builtin.set_fact:
+        ansible_env: "{{ ansible_env | combine({'TERM': 'xterm-256color', 'COLORTERM': 'truecolor'}) }}"
+
+    - name: Detect operating system
+      ansible.builtin.set_fact:
+        is_linux: "{{ ansible_os_family == 'Debian' }}"
+        is_debian: "{{ ansible_distribution in ['Debian', 'Ubuntu'] }}"
+
+    - name: Fail on unsupported macOS
+      ansible.builtin.fail:
+        msg: >-
+          macOS bare-metal support has been deprecated and disabled.
+          Please use a Linux VM or container instead.
+          See README.md for details.
+      when: ansible_os_family == 'Darwin'
+
+    - name: Display detected OS
+      ansible.builtin.debug:
+        msg: |
+          Detected OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          OS Family: {{ ansible_os_family }}
+          Linux (Debian/Ubuntu): {{ is_debian }}
+
+    - name: Update apt cache and upgrade all packages (Debian/Ubuntu)
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+      when: is_debian and not ci_test
+      register: apt_upgrade_result
+
+    - name: Display apt upgrade results
+      ansible.builtin.debug:
+        msg: "✅ System packages updated and upgraded"
+      when: is_debian and apt_upgrade_result.changed
+
+    - name: Install ACL for privilege escalation
+      ansible.builtin.package:
+        name: acl
+        state: present
+      when: is_linux
+
+    - name: Check if running as root
+      ansible.builtin.command: id -u
+      register: user_id
+      changed_when: false
+      become: false
+
+    - name: Set fact for root user
+      ansible.builtin.set_fact:
+        is_root: "{{ user_id.stdout == '0' }}"
+
+    - name: Install Ansible collections
+      ansible.builtin.command: ansible-galaxy collection install -r requirements.yml
+      args:
+        chdir: "{{ playbook_dir }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+
+  roles:
+    - openclaw
+
+  post_tasks:
+    - name: Copy ASCII art script
+      ansible.builtin.template:
+        src: roles/openclaw/templates/show-lobster.sh.j2
+        dest: /tmp/show-lobster.sh
+        mode: '0755'
+
+    - name: Display ASCII art
+      ansible.builtin.command: /tmp/show-lobster.sh
+      changed_when: false
+
+    - name: Create one-time welcome message for openclaw user
+      ansible.builtin.copy:
+        dest: "{{ openclaw_home }}/.openclaw-welcome"
+        owner: "{{ openclaw_user }}"
+        group: "{{ openclaw_user }}"
+        mode: '0644'
+        content: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║        📋 OpenClaw Setup - Next Steps                 ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "You are: $(whoami)@$(hostname)"
+          echo "Home: $HOME"
+          echo "OS: $(uname -s) $(uname -r)"
+          echo ""
+          echo "Environment is configured:"
+          echo "  ✓ XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
+          echo "  ✓ DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS:-not set}"
+          echo "  ✓ OpenClaw: $(openclaw --version 2>/dev/null || echo 'not found')"
+          echo ""
+          echo "────────────────────────────────────────────────────────"
+          echo "🚀 Quick Start - Run This Command:"
+          echo "────────────────────────────────────────────────────────"
+          echo ""
+          echo "    openclaw onboard --install-daemon"
+          echo ""
+          echo "This will:"
+          echo "  • Guide you through the setup wizard"
+          echo "  • Configure your messaging provider"
+          echo "  • Install and start the daemon service"
+          echo ""
+          echo "────────────────────────────────────────────────────────"
+          echo "📚 Alternative Manual Setup:"
+          echo "────────────────────────────────────────────────────────"
+          echo ""
+          echo "1️⃣  Interactive onboarding (recommended):"
+          echo "    openclaw onboard --install-daemon"
+          echo ""
+          echo "2️⃣  Manual configuration:"
+          echo "    openclaw configure"
+          echo "    nano ~/.openclaw/openclaw.json"
+          echo ""
+          echo "3️⃣  Login to messaging provider:"
+          echo "    openclaw providers login"
+          echo ""
+          echo "4️⃣  Test the gateway:"
+          echo "    openclaw gateway"
+          echo ""
+          echo "5️⃣  Install as daemon (if not using onboard):"
+          echo "    openclaw daemon install"
+          echo "    openclaw daemon start"
+          echo ""
+          echo "────────────────────────────────────────────────────────"
+          echo "🔧 Useful Commands:"
+          echo "────────────────────────────────────────────────────────"
+          echo ""
+          echo "  • View logs:        openclaw logs"
+          echo "  • Check status:     openclaw status"
+          echo "  • Stop daemon:      openclaw daemon stop"
+          echo "  • Restart daemon:   openclaw daemon restart"
+          echo "  • Troubleshoot:     openclaw doctor"
+          echo "  • List agents:      openclaw agents list"
+          echo ""
+          {% if tailscale_enabled | default(false) %}echo "────────────────────────────────────────────────────────"
+          echo "🌐 Connect Tailscale VPN (optional):"
+          echo "────────────────────────────────────────────────────────"
+          echo ""
+          echo "    exit"
+          echo "    sudo tailscale up"
+          echo ""
+          {% endif %}echo "────────────────────────────────────────────────────────"
+          echo ""
+          echo "Type 'exit' to return to your previous user"
+          echo ""
+          # Remove welcome message (suppress errors if already deleted)
+          rm -f "$HOME/.openclaw-welcome" 2>/dev/null || true
+
+    - name: Add welcome message to .bashrc
+      ansible.builtin.lineinfile:
+        path: "{{ openclaw_home }}/.bashrc"
+        line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
+        state: present
+        insertafter: EOF
+
+    - name: Notify that playbook is complete
+      ansible.builtin.debug:
+        msg: "✅ OpenClaw installation complete!"

@@ -1,0 +1,53 @@
+---
+# Linux-specific system tools installation (apt-based)
+
+- name: Install essential system tools (Linux - apt)
+  ansible.builtin.apt:
+    name:
+      # Editors
+      - vim
+      - nano
+      # Version control
+      - git
+      - git-lfs
+      # Network tools
+      - curl
+      - wget
+      - netcat-openbsd
+      - net-tools
+      - dnsutils
+      - iputils-ping
+      - traceroute
+      - tcpdump
+      - nmap
+      - socat
+      - telnet
+      # Debugging tools
+      - strace
+      - lsof
+      - gdb
+      - htop
+      - iotop
+      - iftop
+      - sysstat
+      - procps
+      # System utilities
+      - tmux
+      - tree
+      - jq
+      - unzip
+      - rsync
+      - less
+      # Build essentials for development
+      - build-essential
+      - file
+    state: present
+    update_cache: true
+
+- name: Deploy global vim configuration (Linux)
+  ansible.builtin.template:
+    src: vimrc.j2
+    dest: /etc/vim/vimrc.local
+    owner: root
+    group: root
+    mode: '0644'

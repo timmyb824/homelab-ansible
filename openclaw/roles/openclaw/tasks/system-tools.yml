@@ -1,0 +1,25 @@
+---
+# Main system tools orchestration - Linux only
+
+- name: Include Linux system tools installation
+  ansible.builtin.include_tasks: system-tools-linux.yml
+
+# Common tasks for all operating systems
+
+- name: Configure git globally
+  community.general.git_config:
+    name: "{{ item.name }}"
+    scope: global
+    value: "{{ item.value }}"
+  loop:
+    - { name: 'init.defaultBranch', value: 'main' }
+    - { name: 'pull.rebase', value: 'false' }
+    - { name: 'core.editor', value: 'vim' }
+    - { name: 'color.ui', value: 'auto' }
+    - { name: 'alias.st', value: 'status' }
+    - { name: 'alias.co', value: 'checkout' }
+    - { name: 'alias.br', value: 'branch' }
+    - { name: 'alias.ci', value: 'commit' }
+    - { name: 'alias.unstage', value: 'reset HEAD --' }
+    - { name: 'alias.last', value: 'log -1 HEAD' }
+    - { name: 'alias.lg', value: 'log --oneline --graph --decorate --all' }

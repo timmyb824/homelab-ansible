@@ -1,0 +1,18 @@
+{
+  "iptables": true,
+  "ip-forward": true,
+  "userland-proxy": false,
+  "live-restore": true,
+  "ip6tables": false,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/12",
+      "size": 24
+    }
+  ]
+}
