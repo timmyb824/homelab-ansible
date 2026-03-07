@@ -1,7 +1,6 @@
 ---
 - name: Install OpenClaw with Docker and UFW firewall
   hosts: openclaw
-  #connection: local
   become: true
 
   vars:
@@ -12,6 +11,25 @@
     COLORTERM: truecolor
 
   pre_tasks:
+    - name: Ensure systemd-resolved config dir exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Set fallback DNS via systemd-resolved
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/fallback-dns.conf
+        content: |
+          [Resolve]
+          DNS=1.1.1.1 8.8.8.8
+          FallbackDNS=1.0.0.1
+
+    - name: Restart systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+
     - name: Enable color terminal for current session
       ansible.builtin.set_fact:
         ansible_env: "{{ ansible_env | combine({'TERM': 'xterm-256color', 'COLORTERM': 'truecolor'}) }}"
@@ -78,11 +96,21 @@
     - openclaw
 
   post_tasks:
+    - name: Remove fallback DNS config
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d/fallback-dns.conf
+        state: absent
+
+    - name: Restart systemd-resolved to apply removal
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+
     - name: Copy ASCII art script
       ansible.builtin.template:
         src: roles/openclaw/templates/show-lobster.sh.j2
         dest: /tmp/show-lobster.sh
-        mode: '0755'
+        mode: "0755"
 
     - name: Display ASCII art
       ansible.builtin.command: /tmp/show-lobster.sh
@@ -93,7 +121,7 @@
         dest: "{{ openclaw_home }}/.openclaw-welcome"
         owner: "{{ openclaw_user }}"
         group: "{{ openclaw_user }}"
-        mode: '0644'
+        mode: "0644"
         content: |
           echo ""
           echo "╔════════════════════════════════════════════════════════╗"
@@ -169,7 +197,7 @@
     - name: Add welcome message to .bashrc
       ansible.builtin.lineinfile:
         path: "{{ openclaw_home }}/.bashrc"
-        line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
+        line: "[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome"
         state: present
         insertafter: EOF
 

@@ -30,6 +30,10 @@
       basher_state: present
       tags: [basher, shell]
 
+    - role: rustup
+      rustup_state: present
+      tags: [rustup, rust]
+
     # NOTE: dependency on 'rustup'
     - role: cargo_packages
       cargo_parallel_install: true
@@ -59,7 +63,7 @@
 
     - role: node_setup
       node_setup_state: present
-      node_version: "21.1.0"
+      node_version: "22.22.1"
       npm_packages_state: latest
       tags: [node, dev_tools]
 

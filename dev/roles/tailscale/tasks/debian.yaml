@@ -1,4 +1,12 @@
 ---
+- name: Add Cloudflare DNS to resolv.conf to ensure connectivity
+  lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver 1.1.1.1"
+    insertbefore: BOF
+    state: present
+  become: true
+
 - name: Add Tailscale repository signing key
   ansible.builtin.get_url:
     url: "{{ tailscale_repo_url }}/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
