@@ -33,6 +33,12 @@
       scrutiny_collector_state: present # or latest/absent
       tags: [scrutiny-collector, monitoring]
 
+    - role: geerlingguy.docker
+      docker_users:
+        - "{{ ansible_user | default(lookup('env', 'USER')) }}"
+      docker_packages_state: present
+      tags: [docker, containers]
+
 - name: Upgrade Prometheus
   hosts: prometheus
   become: true

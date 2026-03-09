@@ -21,16 +21,16 @@
   block:
     - name: Download kubectl binary
       ansible.builtin.get_url:
-        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/darwin/arm64/kubectl"
+        url: "https://dl.k8s.io/v{{ kubectl_version }}/bin/darwin/amd64/kubectl"
         dest: /tmp/kubectl
-        mode: '0755'
+        mode: "0755"
       register: kubectl_download
 
     - name: Move kubectl to /usr/local/bin
       ansible.builtin.copy:
         src: /tmp/kubectl
         dest: /usr/local/bin/kubectl
-        mode: '0755'
+        mode: "0755"
         remote_src: true
       become: true
 
@@ -39,7 +39,7 @@
         path: /usr/local/bin/kubectl
         owner: root
         group: wheel
-        mode: '0755'
+        mode: "0755"
       become: true
 
 - name: Check if krew is installed
@@ -65,7 +65,7 @@
       ansible.builtin.get_url:
         url: "https://github.com/kubernetes-sigs/krew/releases/latest/download/{{ krew_filename }}.tar.gz"
         dest: "{{ krew_temp_dir.path }}/{{ krew_filename }}.tar.gz"
-        mode: '0755'
+        mode: "0755"
 
     - name: Extract krew
       ansible.builtin.unarchive:
