@@ -1,0 +1,139 @@
+---
+# podman_image_prune/tasks/main.yml
+#
+# Prunes unused podman images. Removes:
+#   - Dangling images (<none> tags) if podman_image_prune_dangling is true
+#   - Old tagged images not referenced by any container (running or stopped),
+#     keeping `podman_image_prune_keep_versions` most-recent tags per repo
+
+- name: Get all images (JSON)
+  become: "{{ podman_image_prune_user != ansible_user }}"
+  become_user: "{{ podman_image_prune_user }}"
+  ansible.builtin.command:
+    cmd: podman images --format json
+  register: _all_images_raw
+  changed_when: false
+
+- name: Get all container image IDs in use (running + stopped)
+  become: "{{ podman_image_prune_user != ansible_user }}"
+  become_user: "{{ podman_image_prune_user }}"
+  ansible.builtin.command:
+    cmd: podman ps -a --format "{{ '{{' }}.ImageID{{ '}}' }}"
+  register: _used_image_ids_raw
+  changed_when: false
+
+- name: Parse image data
+  ansible.builtin.set_fact:
+    _all_images: "{{ _all_images_raw.stdout | from_json }}"
+    _used_image_ids: "{{ _used_image_ids_raw.stdout_lines | map('regex_replace', '^(.{12}).*', '\\1') | list }}"
+
+# --- Dangling images (<none> tagged) ---
+
+- name: Identify dangling images
+  ansible.builtin.set_fact:
+    _dangling_images: >-
+      {{
+        _all_images
+        | selectattr('Names', 'equalto', None)
+        | list
+        + _all_images
+        | selectattr('Names', 'defined')
+        | selectattr('Names', 'contains', '<none>')
+        | list
+      }}
+  when: podman_image_prune_dangling
+
+- name: Filter dangling images not in use
+  ansible.builtin.set_fact:
+    _dangling_to_remove: >-
+      {{
+        _dangling_images
+        | rejectattr('Id', 'search', (_used_image_ids | join('|')))
+        | map(attribute='Id')
+        | list
+      }}
+  when: podman_image_prune_dangling and _dangling_images | length > 0
+
+- name: "[DRY RUN] Show dangling images that would be removed"
+  ansible.builtin.debug:
+    msg: "Would remove dangling image: {{ item }}"
+  loop: "{{ _dangling_to_remove | default([]) }}"
+  when: podman_image_prune_dry_run and (_dangling_to_remove | default([]) | length > 0)
+
+- name: Remove dangling images
+  become: "{{ podman_image_prune_user != ansible_user }}"
+  become_user: "{{ podman_image_prune_user }}"
+  ansible.builtin.command:
+    cmd: "podman image rm {{ item }}"
+  loop: "{{ _dangling_to_remove | default([]) }}"
+  when: not podman_image_prune_dry_run and (_dangling_to_remove | default([]) | length > 0)
+  register: _dangling_rm_result
+  changed_when: _dangling_rm_result.rc == 0
+
+# --- Old tagged images (keep N most recent per repo) ---
+
+- name: Build per-repo image map (tagged images only)
+  ansible.builtin.set_fact:
+    _repo_image_map: >-
+      {{
+        _repo_image_map | default({}) | combine(
+          {
+            (item.Names[0] | regex_replace(':.*$', '')): (
+              (_repo_image_map | default({}))[item.Names[0] | regex_replace(':.*$', '')] | default([])
+              + [{'id': item.Id, 'created': item.Created, 'name': item.Names[0]}]
+            )
+          }
+        )
+      }}
+  loop: >-
+    {{
+      _all_images
+      | selectattr('Names', 'defined')
+      | rejectattr('Names', 'equalto', None)
+      | rejectattr('Names', 'contains', '<none>')
+      | list
+    }}
+  when: item.Names | length > 0
+
+- name: Identify old tagged images to remove (beyond keep_versions per repo)
+  ansible.builtin.set_fact:
+    _tagged_to_remove: >-
+      {{
+        _tagged_to_remove | default([])
+        + (
+            item.value
+            | sort(attribute='created', reverse=true)
+            | list
+          )[podman_image_prune_keep_versions:]
+            | rejectattr('id', 'search', (_used_image_ids | join('|')))
+            | map(attribute='id')
+            | list
+      }}
+  loop: "{{ _repo_image_map | default({}) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: "[DRY RUN] Show old tagged images that would be removed"
+  ansible.builtin.debug:
+    msg: "Would remove old tagged image: {{ item }}"
+  loop: "{{ _tagged_to_remove | default([]) }}"
+  when: podman_image_prune_dry_run and (_tagged_to_remove | default([]) | length > 0)
+
+- name: Remove old tagged images
+  become: "{{ podman_image_prune_user != ansible_user }}"
+  become_user: "{{ podman_image_prune_user }}"
+  ansible.builtin.command:
+    cmd: "podman image rm {{ item }}"
+  loop: "{{ _tagged_to_remove | default([]) }}"
+  when: not podman_image_prune_dry_run and (_tagged_to_remove | default([]) | length > 0)
+  register: _tagged_rm_result
+  changed_when: _tagged_rm_result.rc == 0
+
+# --- Summary ---
+
+- name: Summarize pruning results
+  ansible.builtin.debug:
+    msg:
+      - "Dangling images removed: {{ _dangling_to_remove | default([]) | length }}"
+      - "Old tagged images removed: {{ _tagged_to_remove | default([]) | length }}"
+      - "Dry run mode: {{ podman_image_prune_dry_run }}"

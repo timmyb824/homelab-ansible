@@ -1,0 +1,12 @@
+---
+# How many versions of each image to keep (by tag recency)
+podman_image_prune_keep_versions: 1
+
+# Also remove dangling images (<none> tags)
+podman_image_prune_dangling: true
+
+# Dry run — set to true to see what would be removed without removing anything
+podman_image_prune_dry_run: false
+
+# The user running podman (for rootless setups)
+podman_image_prune_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"

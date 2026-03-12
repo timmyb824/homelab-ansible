@@ -29,7 +29,7 @@
       tags: [k3s_image_prune, k3s, maintenance]
       when: "'k8s' in group_names"
 
-    - role: scrutiny-collector
+    - role: scrutiny_collector
       scrutiny_collector_state: present # or latest/absent
       tags: [scrutiny-collector, monitoring]
 
@@ -38,6 +38,13 @@
         - "{{ ansible_user | default(lookup('env', 'USER')) }}"
       docker_packages_state: present
       tags: [docker, containers]
+
+    - role: podman_image_prune
+      podman_image_prune_keep_versions: 1 # keep latest tag per repo
+      podman_image_prune_dangling: true # also clean up <none> images
+      podman_image_prune_dry_run: false
+      podman_image_prune_user: "{{ ansible_user }}"
+      tags: [podman_image_prune, maintenance]
 
 - name: Upgrade Prometheus
   hosts: prometheus
