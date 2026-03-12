@@ -92,7 +92,7 @@
       tags: [sops_age, security]
 
     - role: onepassword_cli
-      op_version: "v2.30.3"
+      op_version: "v2.32.0"
       op_state: present
       tags: [onepassword_cli, security]
 
