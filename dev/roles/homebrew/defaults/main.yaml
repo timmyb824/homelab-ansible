@@ -22,11 +22,16 @@ homebrew_taps:
 
 # Targeted packages to install (used when install_mode is 'targeted' or 'both')
 homebrew_packages:
+  - 1password-cli
+  - bat
+  - broot
   - chezmoi
   - sops
   - age
   - atuin
   - cloudflared
+  - direnv
+  - fd
   - fzf
   - font-hack-nerd-font
   - ghq
@@ -37,7 +42,11 @@ homebrew_packages:
   - k9s
   - fnm
   - mas
+  - micro
   - rbenv
+  - starship
   - tfenv
+  - thefuck
   - trufflehog
   - zellij
+  - zoxide
