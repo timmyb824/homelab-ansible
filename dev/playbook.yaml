@@ -20,6 +20,7 @@
       homebrew_state: present
       homebrew_install_mas: false
       homebrew_install_slack: false
+      homebrew_install_mode: "targeted"
       tags: [homebrew, package_managers]
 
     - role: awscli

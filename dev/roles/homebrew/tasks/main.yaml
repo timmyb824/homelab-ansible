@@ -23,6 +23,35 @@
       register: brew_env
       changed_when: false
 
+    - name: Add Homebrew taps
+      ansible.builtin.shell: |
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        brew tap {{ item }}
+      loop: "{{ homebrew_taps }}"
+      register: tap_result
+      changed_when: "'already tapped' not in tap_result.stderr"
+      failed_when:
+        - tap_result.rc != 0
+        - "'already tapped' not in tap_result.stderr"
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['targeted', 'both']
+
+    - name: Install targeted packages
+      ansible.builtin.shell: |
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        brew install {{ item }}
+      loop: "{{ homebrew_packages }}"
+      register: package_install
+      changed_when: "'already installed' not in package_install.stderr"
+      failed_when:
+        - package_install.rc != 0
+        - "'already installed' not in package_install.stderr"
+        - "'brew link' not in package_install.stderr"
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['targeted', 'both']
+
     - name: Fetch package list from gist
       become: false
       ansible.builtin.uri:
@@ -33,13 +62,17 @@
       register: package_list
       delegate_to: localhost
       run_once: true
-      when: homebrew_state != 'absent'
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['brewfile', 'both']
 
     - name: Create temporary Brewfile
       ansible.builtin.copy:
         content: "{{ package_list.content }}"
         dest: "/tmp/Brewfile"
-      when: homebrew_state != 'absent'
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['brewfile', 'both']
 
     - name: Install packages from Brewfile
       ansible.builtin.shell: |
@@ -48,7 +81,9 @@
       register: brew_bundle
       changed_when: brew_bundle.stdout != ''
       failed_when: false
-      when: homebrew_state != 'absent'
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['brewfile', 'both']
 
     - name: Display Brewfile installation output
       ansible.builtin.debug:
@@ -60,6 +95,7 @@
           {{ brew_bundle.stdout }}
       when:
         - homebrew_state != 'absent'
+        - homebrew_install_mode in ['brewfile', 'both']
         - brew_bundle is defined
 
     - name: Install Mac App Store CLI
@@ -91,4 +127,6 @@
       ansible.builtin.file:
         path: "/tmp/Brewfile"
         state: absent
-      when: homebrew_state != 'absent'
+      when:
+        - homebrew_state != 'absent'
+        - homebrew_install_mode in ['brewfile', 'both']

@@ -1,9 +1,43 @@
 ---
 homebrew_state: present # Can be 'present' or 'absent'
 
+# Installation mode: 'brewfile', 'targeted', or 'both'
+# - brewfile: Install packages from Brewfile in gist
+# - targeted: Install only the targeted package list below
+# - both: Install from both Brewfile and targeted list
+homebrew_install_mode: "brewfile"
+
 # Mac App Store configuration
 install_mas: false # Whether to install Mac App Store CLI
 install_slack: false # Whether to install Slack from Mac App Store
 
 # Gist base URL for package lists
 gist_base_url: "https://gist.githubusercontent.com/timmyb824/807597f33b14eceeb26e4e6f81d45962/raw"
+
+# Targeted package installation
+# Taps to add before installing targeted packages
+homebrew_taps:
+  - cloudflare/cloudflare
+  - hashicorp/tap
+
+# Targeted packages to install (used when install_mode is 'targeted' or 'both')
+homebrew_packages:
+  - chezmoi
+  - sops
+  - age
+  - atuin
+  - cloudflared
+  - fzf
+  - font-hack-nerd-font
+  - ghq
+  - gh
+  - go
+  - helix
+  - helm
+  - k9s
+  - fnm
+  - mas
+  - rbenv
+  - tfenv
+  - trufflehog
+  - zellij
