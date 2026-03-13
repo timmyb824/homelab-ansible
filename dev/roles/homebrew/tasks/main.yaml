@@ -13,9 +13,25 @@
       changed_when: false
       failed_when: false
 
+    - name: Add temporary passwordless sudo for Homebrew installation
+      become: true
+      ansible.builtin.copy:
+        content: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL"
+        dest: "/private/etc/sudoers.d/ansible_homebrew_temp"
+        mode: "0440"
+        validate: "visudo -cf %s"
+      when: brew_check.rc != 0
+
     - name: Install Homebrew
       ansible.builtin.shell: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      when: brew_check.rc != 0
+
+    - name: Remove temporary passwordless sudo
+      become: true
+      ansible.builtin.file:
+        path: "/private/etc/sudoers.d/ansible_homebrew_temp"
+        state: absent
       when: brew_check.rc != 0
 
     - name: Initialize Homebrew environment

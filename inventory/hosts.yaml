@@ -19,6 +19,12 @@ all:
         localhost:
           ansible_connection: local
           ansible_python_interpreter: /usr/bin/python3
+        timmyb-macbook:
+          ansible_host: 192.168.86.55
+          ansible_connection: ssh
+          ansible_port: 22
+          ansible_user: timothybryant
+          ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
     servers:
       hosts:
         archivebox:
