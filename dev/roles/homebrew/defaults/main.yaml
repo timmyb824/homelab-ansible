@@ -31,9 +31,11 @@ homebrew_packages:
   - atuin
   - cloudflared
   - direnv
+  - eza
   - fd
   - fzf
   - font-hack-nerd-font
+  - gcc
   - ghq
   - gh
   - go
@@ -43,6 +45,7 @@ homebrew_packages:
   - fnm
   - mas
   - micro
+  - neovim
   - rbenv
   - starship
   - tfenv

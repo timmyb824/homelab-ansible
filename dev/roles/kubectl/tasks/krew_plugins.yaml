@@ -2,7 +2,7 @@
 - name: Set krew environment
   ansible.builtin.set_fact:
     krew_env:
-      PATH: "{{ ansible_env.HOME }}/.krew/bin:{{ ansible_env.PATH }}"
+      PATH: "{{ ansible_env.HOME }}/.krew/bin:/usr/local/bin:/opt/homebrew/bin:{{ ansible_env.PATH }}"
 
 - name: Verify krew is available
   ansible.builtin.shell: kubectl krew

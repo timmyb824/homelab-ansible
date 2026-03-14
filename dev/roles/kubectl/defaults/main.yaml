@@ -3,3 +3,4 @@ kubectl_version: "v1.28.2"
 kubectl_state: present # Can be 'present' or 'absent'
 krew_plugins_state: latest # Can be 'present' or 'latest'
 gist_base_url: "https://gist.githubusercontent.com/timmyb824/807597f33b14eceeb26e4e6f81d45962/raw"
+krew_version: "0.5.0"
