@@ -1,2 +1,3 @@
 ---
 neovim_state: present  # Can be 'present' or 'absent'
+neovim_dir: nvim-linux64  # Final directory name under /opt

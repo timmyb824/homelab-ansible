@@ -64,7 +64,7 @@
 
     - name: Remove existing Neovim directory
       ansible.builtin.file:
-        path: /opt/nvim
+        path: /opt/{{ neovim_dir }}
         state: absent
       become: true
 
@@ -75,29 +75,20 @@
         remote_src: true
       become: true
 
-    - name: Set neovim directory name
-      ansible.builtin.set_fact:
-        neovim_dir: >-
-          {{
+    - name: Rename extracted Neovim directory to {{ neovim_dir }}
+      ansible.builtin.command:
+        cmd: >-
+          mv /opt/{{
             'nvim-linux-arm64' if target_arch == 'arm64'
-            else 'nvim-linux64' if target_arch == 'x86_64'
-            else 'unsupported'
-          }}
+            else 'nvim-linux-x86_64'
+          }} /opt/{{ neovim_dir }}
+      become: true
 
     - name: Debug neovim paths
       ansible.builtin.debug:
         msg: |
           Neovim directory: /opt/{{ neovim_dir }}
           Binary path: /opt/{{ neovim_dir }}/bin/nvim
-
-    - name: Create symlink to nvim binary
-      ansible.builtin.file:
-        src: "/opt/{{ neovim_dir }}/bin/nvim"
-        dest: /usr/local/bin/nvim
-        state: link
-        force: true
-        follow: false
-      become: true
 
     - name: Clean up temp directory
       ansible.builtin.file:
@@ -109,12 +100,6 @@
   block:
     - name: Remove Neovim directory
       ansible.builtin.file:
-        path: /opt/nvim-linux64
-        state: absent
-      become: true
-
-    - name: Remove Neovim symlink
-      ansible.builtin.file:
-        path: /usr/local/bin/nvim
+        path: /opt/{{ neovim_dir }}
         state: absent
       become: true

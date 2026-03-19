@@ -52,6 +52,10 @@
       atuin_install_method: cargo
       tags: [atuin, shell]
 
+    - role: neovim
+      neovim_state: present
+      tags: [nvim, neovim, dev_tools]
+
     - role: fzf
       fzf_state: present
       git_ssl_verify: "{{ false if inventory_hostname in groups['vagrant'] else true }}"
