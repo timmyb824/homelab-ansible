@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
 
   # Parallels specific configuration
   config.vm.provider "parallels" do |prl, override|
-    override.vm.box = "bento/ubuntu-22.04-arm64"
+    override.vm.box = "bento/ubuntu-20.04"
     prl.memory = 2048
     prl.cpus = 2
     # prl.update_guest_tools = true
@@ -28,6 +28,7 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "ansible" do |ansible|
+    ansible.compatibility_mode = "2.0"
     ansible.playbook = "./dev/init_playbook.yaml"
     ansible.raw_arguments = [
       "-i", "./inventory/vagrant.yaml",
