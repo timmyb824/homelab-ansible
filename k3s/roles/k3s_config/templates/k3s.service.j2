@@ -1,0 +1,46 @@
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-/etc/systemd/system/k3s.service.env
+KillMode=process
+Delegate=yes
+User=root
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s \
+    server \
+{% if not k3s_is_bootstrap %}
+    --server {{ k3s_server_url }} \
+    --token {{ k3s_token }} \
+{% endif %}
+    --disable servicelb \
+    --disable traefik \
+    --write-kubeconfig-mode 644 \
+    --kube-controller-manager-arg bind-address=0.0.0.0 \
+    --kube-proxy-arg metrics-bind-address=0.0.0.0 \
+    --kube-scheduler-arg bind-address=0.0.0.0 \
+    --etcd-expose-metrics true \
+    --kubelet-arg containerd=/run/k3s/containerd/containerd.sock \
+{% for taint in k3s_taints %}
+    --node-taint {{ taint }} \
+{% endfor %}
+{% for arg in k3s_extra_args %}
+    {{ arg }} \
+{% endfor %}

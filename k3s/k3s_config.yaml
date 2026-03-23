@@ -1,0 +1,15 @@
+---
+# Use --limit to target specific nodes
+- name: Configure k3s control plane nodes
+  hosts: master
+  become: true
+  roles:
+    - role: k3s_config
+      k3s_apply_taints_kubectl: true
+
+- name: Configure k3s worker nodes
+  hosts: node
+  become: true
+  serial: "100%"
+  roles:
+    - role: k3s_config

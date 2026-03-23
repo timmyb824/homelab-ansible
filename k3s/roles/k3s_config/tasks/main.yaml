@@ -1,0 +1,82 @@
+- name: Check etcd health before making changes
+  ansible.builtin.command:
+    cmd: k3s etcd-snapshot ls
+  register: etcd_health
+  changed_when: false
+  failed_when: etcd_health.rc != 0
+  when: k3s_node_type == 'server'
+
+- name: Verify etcd cluster has quorum
+  ansible.builtin.command:
+    cmd: k3s kubectl get nodes --no-headers
+  register: node_check
+  changed_when: false
+  failed_when: node_check.rc != 0
+  delegate_to: "{{ groups['master'][0] }}"
+  when: k3s_node_type == 'server'
+
+- name: Check if service file has changes pending
+  ansible.builtin.template:
+    src: "{{ k3s_service_file }}.j2"
+    dest: "/etc/systemd/system/{{ k3s_service_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  check_mode: true
+  register: service_file_check
+
+- name: Get current date for backup filename
+  ansible.builtin.command:
+    cmd: date +%Y%m%d%H%M%S
+  register: backup_timestamp
+  changed_when: false
+  when: service_file_check.changed and not ansible_check_mode
+
+- name: Backup existing k3s service file
+  ansible.builtin.copy:
+    src: "/etc/systemd/system/{{ k3s_service_file }}"
+    dest: "/etc/systemd/system/{{ k3s_service_file }}.{{ backup_timestamp.stdout }}.bak"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: service_file_check.changed and not ansible_check_mode
+
+- name: Deploy k3s systemd service file
+  ansible.builtin.template:
+    src: "{{ k3s_service_file }}.j2"
+    dest: "/etc/systemd/system/{{ k3s_service_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart k3s
+  when: service_file_check.changed and not ansible_check_mode
+
+- name: Apply control plane taint via kubectl
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl taint node {{ inventory_hostname }}
+      node-role.kubernetes.io/control-plane=:NoSchedule
+      --overwrite
+  delegate_to: "{{ groups['master'][0] }}"
+  changed_when: true
+  when: k3s_node_type == 'server' and k3s_apply_taints_kubectl
+
+- name: Wait for node to be ready after restart
+  ansible.builtin.command:
+    cmd: k3s kubectl get node {{ inventory_hostname }} --no-headers
+  register: node_ready
+  retries: 12
+  delay: 10
+  until: "'Ready' in node_ready.stdout and 'NotReady' not in node_ready.stdout"
+  delegate_to: "{{ groups['master'][0] }}"
+  changed_when: false
+  when: k3s_node_type == 'server'
+
+- name: Ensure k3s service is enabled and running
+  ansible.builtin.systemd:
+    name: "{{ k3s_service_name }}"
+    enabled: true
+    state: started

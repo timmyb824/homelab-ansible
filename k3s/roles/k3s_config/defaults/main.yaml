@@ -1,0 +1,11 @@
+k3s_node_type: server # server or agent
+k3s_is_bootstrap: false
+k3s_server_url: ""
+k3s_token: ""
+k3s_taints: []
+k3s_extra_args: []
+k3s_apply_taints_kubectl: false
+
+# Derived from node type, can be overridden if needed
+k3s_service_name: "{{ 'k3s' if k3s_node_type == 'server' else 'k3s-agent' }}"
+k3s_service_file: "{{ 'k3s.service' if k3s_node_type == 'server' else 'k3s-agent.service' }}"
