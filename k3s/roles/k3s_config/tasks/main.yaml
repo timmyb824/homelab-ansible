@@ -64,6 +64,16 @@
   changed_when: true
   when: k3s_node_type == 'server' and k3s_apply_taints_kubectl
 
+- name: Remove control plane taint via kubectl
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl taint node {{ inventory_hostname }}
+      node-role.kubernetes.io/control-plane=:NoSchedule-
+      --overwrite
+  delegate_to: "{{ groups['master'][0] }}"
+  changed_when: true
+  when: k3s_node_type == 'server' and k3s_remove_taints_kubectl
+
 - name: Wait for node to be ready after restart
   ansible.builtin.command:
     cmd: k3s kubectl get node {{ inventory_hostname }} --no-headers

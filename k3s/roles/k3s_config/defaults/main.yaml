@@ -5,6 +5,7 @@ k3s_token: ""
 k3s_taints: []
 k3s_extra_args: []
 k3s_apply_taints_kubectl: false
+k3s_remove_taints_kubectl: false
 
 # Derived from node type, can be overridden if needed
 k3s_service_name: "{{ 'k3s' if k3s_node_type == 'server' else 'k3s-agent' }}"

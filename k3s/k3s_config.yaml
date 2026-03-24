@@ -5,7 +5,8 @@
   become: true
   roles:
     - role: k3s_config
-      k3s_apply_taints_kubectl: true
+      k3s_apply_taints_kubectl: false
+      k3s_remove_taints_kubectl: true
 
 - name: Configure k3s worker nodes
   hosts: node
