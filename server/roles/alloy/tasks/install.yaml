@@ -6,11 +6,24 @@
     update_cache: true
   become: true
 
+# - name: Alloy | Add Grafana GPG key
+#   ansible.builtin.apt_key:
+#     url: https://apt.grafana.com/gpg.key
+#     keyring: /etc/apt/keyrings/grafana.gpg
+#     state: present
+#   become: true
+#
+
 - name: Alloy | Add Grafana GPG key
-  ansible.builtin.apt_key:
+  ansible.builtin.get_url:
     url: https://apt.grafana.com/gpg.key
-    keyring: /etc/apt/keyrings/grafana.gpg
-    state: present
+    dest: /tmp/grafana.gpg_armored
+  become: true
+
+- name: Alloy | Dearmor Grafana GPG key
+  ansible.builtin.shell:
+    cmd: gpg --dearmor < /tmp/grafana.gpg_armored > /etc/apt/keyrings/grafana.gpg
+    creates: /etc/apt/keyrings/grafana.gpg
   become: true
 
 - name: Alloy | Add Grafana repository
