@@ -19,70 +19,73 @@
     - "{{ ansible_env.HOME }}/go/bin"
   when: go_packages_state != 'absent'
 
-- name: Set OS-specific gist filename
-  ansible.builtin.set_fact:
-    gist_filename: "go_{{ ansible_system | lower }}.list"
+- name: Install Go packages from gist
+  when: go_packages_install
+  block:
+    - name: Set OS-specific gist filename
+      ansible.builtin.set_fact:
+        gist_filename: "go_{{ ansible_system | lower }}.list"
 
-- name: Fetch package list from gist
-  become: false
-  ansible.builtin.uri:
-    url: "{{ gist_base_url }}/{{ gist_filename }}"
-    return_content: true
-  register: package_list
-  delegate_to: localhost
-  run_once: true
-  when: go_packages_state != 'absent'
+    - name: Fetch package list from gist
+      become: false
+      ansible.builtin.uri:
+        url: "{{ gist_base_url }}/{{ gist_filename }}"
+        return_content: true
+      register: package_list
+      delegate_to: localhost
+      run_once: true
+      when: go_packages_state != 'absent'
 
-- name: Parse package list
-  become: false
-  ansible.builtin.set_fact:
-    go_packages: "{{ package_list.content.split('\n') | map('trim') | reject('search', '^#') | map('split', '#') | map('first') | map('trim') | reject('equalto', '') | list + go_extra_packages }}"
-  when: go_packages_state != 'absent'
+    - name: Parse package list
+      become: false
+      ansible.builtin.set_fact:
+        go_packages: "{{ package_list.content.split('\n') | map('trim') | reject('search', '^#') | map('split', '#') | map('first') | map('trim') | reject('equalto', '') | list + go_extra_packages }}"
+      when: go_packages_state != 'absent'
 
-- name: Debug - Show gist content
-  ansible.builtin.debug:
-    var: package_list
-  when: go_packages_state != 'absent'
+    - name: Debug - Show gist content
+      ansible.builtin.debug:
+        var: package_list
+      when: go_packages_state != 'absent'
 
-- name: Debug - Show parsed packages
-  ansible.builtin.debug:
-    var: go_packages
-  when: go_packages_state != 'absent'
+    - name: Debug - Show parsed packages
+      ansible.builtin.debug:
+        var: go_packages
+      when: go_packages_state != 'absent'
 
-- name: Get list of installed packages
-  ansible.builtin.shell: |
-    {% if ansible_os_family == "Darwin" %}
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-    {% endif %}
-    set -o pipefail
-    for dir in $(go env GOPATH | tr ':' ' '); do
-      if [ -d "$dir/bin" ]; then
-        ls -1 "$dir/bin"
-      fi
-    done
-  register: installed_packages
-  changed_when: false
-  failed_when: false
-  environment:
-    PATH: "{{ ansible_env.HOME }}/go/bin:{{ ansible_env.PATH }}"
-    GOPATH: "{{ go_path }}"
-  when: go_packages_state != 'absent'
+    - name: Get list of installed packages
+      ansible.builtin.shell: |
+        {% if ansible_os_family == "Darwin" %}
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        {% endif %}
+        set -o pipefail
+        for dir in $(go env GOPATH | tr ':' ' '); do
+          if [ -d "$dir/bin" ]; then
+            ls -1 "$dir/bin"
+          fi
+        done
+      register: installed_packages
+      changed_when: false
+      failed_when: false
+      environment:
+        PATH: "{{ ansible_env.HOME }}/go/bin:{{ ansible_env.PATH }}"
+        GOPATH: "{{ go_path }}"
+      when: go_packages_state != 'absent'
 
-- name: Debug - Show installed packages
-  ansible.builtin.debug:
-    var: installed_packages
-  when: go_packages_state != 'absent'
+    - name: Debug - Show installed packages
+      ansible.builtin.debug:
+        var: installed_packages
+      when: go_packages_state != 'absent'
 
-- name: Install Go packages
-  ansible.builtin.shell: |
-    {% if ansible_os_family == "Darwin" %}
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-    {% endif %}
-    export PATH="{{ ansible_env.HOME }}/go/bin:$PATH"
-    export GOPATH="{{ go_path }}"
-    go install {{ item if '@' in item else item + '@latest' }}
-  loop: "{{ go_packages | default([]) }}"
-  register: go_install
-  changed_when: go_install.rc == 0
-  failed_when: false
-  when: go_packages_state != 'absent'
+    - name: Install Go packages
+      ansible.builtin.shell: |
+        {% if ansible_os_family == "Darwin" %}
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        {% endif %}
+        export PATH="{{ ansible_env.HOME }}/go/bin:$PATH"
+        export GOPATH="{{ go_path }}"
+        go install {{ item if '@' in item else item + '@latest' }}
+      loop: "{{ go_packages | default([]) }}"
+      register: go_install
+      changed_when: go_install.rc == 0
+      failed_when: false
+      when: go_packages_state != 'absent'

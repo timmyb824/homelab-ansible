@@ -117,6 +117,7 @@
 
     - role: go_packages
       go_packages_state: present
+      go_packages_install: false
       tags: [go, dev_tools]
 
     - role: superfile

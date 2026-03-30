@@ -5,6 +5,21 @@
   changed_when: false
   failed_when: false
 
+- name: Set go_needs_update fact
+  ansible.builtin.set_fact:
+    go_needs_update: >-
+      {{
+        go_packages_state != "absent" and
+        (go_current_version.rc != 0 or go_version not in (go_current_version.stdout | default('')))
+      }}
+
+- name: Remove existing Go installation before upgrade
+  become: true
+  ansible.builtin.file:
+    path: "{{ go_install_dir }}/go"
+    state: absent
+  when: go_needs_update
+
 - name: Create temporary directory
   ansible.builtin.file:
     path: /tmp/go_install
@@ -19,10 +34,7 @@
     dest: "{{ go_install_dir }}"
     remote_src: true
     mode: "0755"
-    creates: "{{ go_install_dir }}/go/bin/go"
-  when: >
-    go_packages_state != "absent" and
-    (go_current_version.rc != 0 or go_version not in (go_current_version.stdout | default('')))
+  when: go_needs_update
 
 - name: Remove Go installation
   become: true

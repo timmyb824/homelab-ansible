@@ -2,13 +2,15 @@
 go_packages_state: present # Can be 'present' or 'absent'
 
 # Go version to install (without 'go' prefix)
-go_version: "1.22.0"
+go_version: "1.26.1"
 
 # Installation directory for Go
-go_install_dir: "/usr/local"
+go_install_dir: "/usr/local/bin"
 
 # User's GOPATH
 go_path: "{{ ansible_env.HOME }}/go"
+
+go_packages_install: false # Set to true to install packages from gist
 
 # Extra Go packages to install (in addition to those from gist)
 go_extra_packages: []
