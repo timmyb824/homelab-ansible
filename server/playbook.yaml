@@ -16,7 +16,7 @@
       tags: [node_exporter, monitoring]
 
     - role: podman
-      podman_state: present # or latest/absent
+      podman_state: latest # or latest/absent
       podman_symlink_docker: false
       tags: [podman, containers]
 
@@ -45,6 +45,10 @@
       podman_image_prune_dry_run: false
       podman_image_prune_user: "{{ ansible_user }}"
       tags: [podman_image_prune, maintenance]
+
+    - role: unbound
+      unbound_version: "1.24.2"
+      tags: [unbound, dns, upgrade]
 
 - name: Upgrade Prometheus
   hosts: prometheus

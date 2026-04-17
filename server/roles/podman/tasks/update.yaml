@@ -52,20 +52,25 @@
   become: true
 
 - name: Podman | Upgrade podman-compose (if uv present)
-  ansible.builtin.command: |
-    export PATH="/home/{{ podman_user }}/.local/bin:$PATH"
-    uv tool upgrade podman-compose
+  ansible.builtin.shell: |
+    /home/{{ ansible_user }}/.local/bin/uv tool install podman-compose --upgrade
   when: podman_compose_manage
   become: true
-  become_user: "{{ podman_user }}"
+  become_user: "{{ ansible_user }}"
   ignore_errors: true
 
 - name: Podman | Restart rootless podman service
-  ansible.builtin.command: systemctl --user daemon-reload && systemctl --user restart podman.socket podman.service
+  ansible.builtin.shell: |
+    systemctl --user daemon-reload
+    systemctl --user restart podman.socket
+    systemctl --user restart podman.service
   become: false
   ignore_errors: true
 
 - name: Podman | Restart root podman service
-  ansible.builtin.command: sudo systemctl daemon-reload && sudo systemctl restart podman.socket podman.service
+  ansible.builtin.shell: |
+    systemctl daemon-reload
+    systemctl restart podman.socket
+    systemctl restart podman.service
   become: true
   ignore_errors: true

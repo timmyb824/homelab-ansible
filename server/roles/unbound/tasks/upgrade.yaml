@@ -1,0 +1,107 @@
+---
+- name: Unbound | Check if binary exists
+  ansible.builtin.stat:
+    path: "{{ unbound_bin }}"
+  register: unbound_bin_stat
+  become: true
+
+- name: Unbound | Get current installed version
+  ansible.builtin.command:
+    cmd: "{{ unbound_bin }} -V"
+  register: unbound_current_version_output
+  become: true
+  changed_when: false
+  when: unbound_bin_stat.stat.exists
+
+- name: Unbound | Fail if version cannot be determined from existing install
+  ansible.builtin.fail:
+    msg: >-
+      Unbound binary exists at {{ unbound_bin }} but version could not be determined (rc={{ unbound_current_version_output.rc }}). Refusing to proceed without a backup. Resolve manually or remove the binary to skip backups.
+  when:
+    - unbound_bin_stat.stat.exists
+    - unbound_current_version_output.rc != 0
+
+- name: Unbound | Parse current version
+  ansible.builtin.set_fact:
+    unbound_current_version: >-
+      {{ unbound_current_version_output.stdout
+         | regex_search('Version\s+(\S+)', '\1')
+         | first }}
+  when: unbound_bin_stat.stat.exists
+
+- name: Unbound | Backup config directory
+  ansible.builtin.copy:
+    src: "{{ unbound_config_dir }}/"
+    dest: "{{ unbound_config_dir }}-{{ unbound_current_version }}.bak/"
+    remote_src: true
+    mode: preserve
+  become: true
+  when: unbound_bin_stat.stat.exists
+
+- name: Unbound | Backup binary
+  ansible.builtin.copy:
+    src: "{{ unbound_bin }}"
+    dest: "{{ unbound_bin }}-{{ unbound_current_version }}.bak"
+    remote_src: true
+    mode: preserve
+  become: true
+  when: unbound_bin_stat.stat.exists
+
+- name: Unbound | Ensure builds directory exists
+  ansible.builtin.file:
+    path: "{{ unbound_builds_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Unbound | Download source tarball
+  ansible.builtin.get_url:
+    url: "https://nlnetlabs.nl/downloads/unbound/unbound-{{ unbound_version }}.tar.gz"
+    dest: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}.tar.gz"
+    mode: "0644"
+
+- name: Unbound | Extract source tarball
+  ansible.builtin.unarchive:
+    src: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}.tar.gz"
+    dest: "{{ unbound_builds_dir }}/"
+    remote_src: true
+
+- name: Unbound | Remove tarball
+  ansible.builtin.file:
+    path: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}.tar.gz"
+    state: absent
+
+- name: Unbound | Configure
+  ansible.builtin.command:
+    cmd: ./configure
+    chdir: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}"
+  changed_when: true
+
+- name: Unbound | Make
+  ansible.builtin.command:
+    cmd: make
+    chdir: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}"
+  changed_when: true
+
+- name: Unbound | Make install
+  ansible.builtin.command:
+    cmd: make install
+    chdir: "{{ unbound_builds_dir }}/unbound-{{ unbound_version }}"
+  become: true
+  changed_when: true
+
+- name: Unbound | Verify installed version
+  ansible.builtin.command:
+    cmd: "{{ unbound_bin }} -V"
+  register: unbound_new_version_output
+  become: true
+  changed_when: false
+
+- name: Unbound | Show installed version
+  ansible.builtin.debug:
+    msg: "{{ unbound_new_version_output.stdout_lines[0] }}"
+
+- name: Unbound | Restart service
+  ansible.builtin.systemd:
+    name: unbound
+    state: restarted
+  become: true

@@ -1,0 +1,3 @@
+---
+- name: Unbound | Upgrade
+  ansible.builtin.include_tasks: upgrade.yaml

@@ -1,0 +1,5 @@
+---
+unbound_version: "1.24.2"
+unbound_builds_dir: "/home/{{ ansible_user }}/builds"
+unbound_config_dir: "/usr/local/etc/unbound"
+unbound_bin: "/usr/local/sbin/unbound"
