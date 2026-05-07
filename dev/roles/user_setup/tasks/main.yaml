@@ -59,6 +59,12 @@
   become: true
   when: item != "" and ssh_key_contents != ""
 
+- name: Install sudo if not present
+  ansible.builtin.package:
+    name: sudo
+    state: present
+  become: true
+
 - name: Create sudoers file for remote user
   ansible.builtin.copy:
     content: "{{ ssh_remote_user }} ALL=(ALL) NOPASSWD: ALL"
