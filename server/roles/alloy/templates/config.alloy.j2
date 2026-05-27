@@ -8,7 +8,7 @@ local.file_match "system" {
 
 loki.source.file "system" {
     targets               = local.file_match.system.targets
-    forward_to            = [loki.write.default.receiver]
+    forward_to            = [loki.write.default.receiver{% if 'proxmox' in group_names %}, loki.write.grafanacloud.receiver{% endif %}]
     legacy_positions_file = "/tmp/positions.yaml"
 }
 
@@ -25,11 +25,49 @@ loki.source.journal "journal" {
     max_age       = "12h0m0s"
     path          = "/var/log/journal"
     relabel_rules = discovery.relabel.journal.rules
-    forward_to    = [loki.write.default.receiver]
+    forward_to    = [loki.write.default.receiver{% if 'proxmox' in group_names %}, loki.write.grafanacloud.receiver{% endif %}]
     labels        = {
         job = "systemd-journal",
     }
 }
+
+{% if 'proxmox' in group_names %}
+local.file_match "proxmox" {
+    path_targets = [
+        {
+            __address__ = "localhost",
+            __path__    = "/var/log/pve/tasks/active",
+            job         = "pve-tasks",
+        },
+        {
+            __address__ = "localhost",
+            __path__    = "/var/log/kern.log",
+            job         = "kern",
+        },
+    ]
+}
+
+loki.source.file "proxmox" {
+    targets               = local.file_match.proxmox.targets
+    forward_to            = [loki.write.default.receiver, loki.write.grafanacloud.receiver]
+    legacy_positions_file = "/tmp/positions-proxmox.yaml"
+}
+
+loki.write "grafanacloud" {
+    endpoint {
+        url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
+
+        basic_auth {
+            username = "{{ alloy_grafanacloud_username }}"
+            password = "{{ alloy_grafanacloud_password }}"
+        }
+    }
+    external_labels = {
+        host      = "{{ ansible_hostname }}",
+        node_type = "proxmox",
+    }
+}
+{% endif %}
 
 loki.write "default" {
     endpoint {
@@ -37,5 +75,8 @@ loki.write "default" {
     }
     external_labels = {
         host = "{{ ansible_hostname }}",
+{% if 'proxmox' in group_names %}
+        node_type = "proxmox",
+{% endif %}
     }
 }
