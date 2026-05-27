@@ -27,6 +27,22 @@ Vagrant.configure("2") do |config|
     # prl.customize ["set", :id, "--install-parallels-tools", "off"]
   end
 
+  config.vm.provision "shell", inline: <<-SHELL
+    timedatectl set-ntp true
+    systemctl restart systemd-timesyncd
+  SHELL
+
+  config.vm.provision "shell", inline: <<-SHELL
+    python3 --version | grep -qE '3\.(9|1[0-9])' && echo "Python OK, skipping" && exit 0
+    apt-get install -y software-properties-common
+    add-apt-repository -y ppa:deadsnakes/ppa
+    apt-get update -y
+    apt-get install -y python3.12 python3.12-venv python3.12-distutils
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2
+    update-alternatives --set python3 /usr/bin/python3.12
+  SHELL
+
   config.vm.provision "ansible" do |ansible|
     ansible.compatibility_mode = "2.0"
     ansible.playbook = "./dev/init_playbook.yaml"

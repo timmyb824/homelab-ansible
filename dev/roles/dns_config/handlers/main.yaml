@@ -1,6 +1,13 @@
 ---
+# - name: restart systemd-resolved
+#   systemd:
+#     name: systemd-resolved
+#     state: restarted
+#   become: true
+
+# Using shell instead of systemd module to avoid the task from hanging
 - name: restart systemd-resolved
-  systemd:
-    name: systemd-resolved
-    state: restarted
+  shell: systemctl restart systemd-resolved
   become: true
+  async: 30
+  poll: 5

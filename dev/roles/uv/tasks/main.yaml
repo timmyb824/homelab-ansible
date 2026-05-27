@@ -45,14 +45,16 @@
         validate_certs: true
         method: GET
       register: tools_list
+      become: false
       delegate_to: localhost
       run_once: true
+      when: uv_install_tools | bool
 
     - name: Parse tools list
       ansible.builtin.set_fact:
         # uv_tools: "{{ tools_list.content | regex_replace('#.*$', '') | split('\n') | select('regex', '^\\S+$') | list }}"
         uv_tools: "{{ tools_list.content.split('\n') | map('trim') | reject('search', '^#') | map('split', '#') | map('first') | map('trim') | reject('equalto', '') | list }}"
-      when: tools_list is defined and tools_list.content is defined
+      when: uv_install_tools | bool and tools_list is defined and tools_list.content is defined
 
     - name: Verify tools list is not empty
       ansible.builtin.fail:
@@ -69,13 +71,14 @@
       loop: "{{ uv_tools }}"
       changed_when: tools_install.rc == 0
       failed_when: false
-      when: uv_tools is defined
+      when: uv_install_tools | bool and uv_tools is defined
 
     - name: Debug tool installation results
       ansible.builtin.debug:
         msg: "Failed to install {{ item.item }}: {{ item.stderr }}"
       loop: "{{ tools_install.results }}"
       when:
+        - uv_install_tools | bool
         - tools_install is defined
         - item.rc != 0
 

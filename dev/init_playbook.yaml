@@ -12,3 +12,13 @@
   roles:
     - role: user_setup
       tags: [user_setup, vagrant]
+
+- name: Install uv for managing Python versions
+  hosts: all
+  roles:
+    - role: uv
+      become: false
+      uv_state: present
+      uv_python_versions:
+        - "3.12"
+      tags: [uv, vagrant]

@@ -1,6 +1,7 @@
 ---
-uv_state: present  # Can be 'present' or 'absent'
-uv_python_versions:  # List of Python versions to install
+uv_state: present # Can be 'present' or 'absent'
+uv_python_versions: # List of Python versions to install
   - "3.11"
   - "3.12"
 uv_tools_gist_url: "https://gist.githubusercontent.com/timmyb824/807597f33b14eceeb26e4e6f81d45962/raw/uv_{{ ansible_system | lower }}.list"
+uv_install_tools: false

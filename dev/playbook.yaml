@@ -84,6 +84,7 @@
         - "3.11"
         - "3.12"
       tags: [uv, dev_tools]
+      uv_install_tools: true
 
     - role: tfenv
       tf_version: "latest"
