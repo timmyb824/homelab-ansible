@@ -5,3 +5,4 @@ servers/Archive/
 .venv/
 AARCHIVE/
 .ansible/
+.remember/
