@@ -41,6 +41,10 @@ loki.process "drop_noise" {
    stage.drop {
        expression = ".*failed to send usage report.*"
    }
+
+   stage.drop {
+       expression = ".*reporting Alloy stats.*"
+   }
 }
 
 {% if 'proxmox' in group_names %}
