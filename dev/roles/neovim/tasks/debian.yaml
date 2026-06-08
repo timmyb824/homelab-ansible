@@ -1,4 +1,13 @@
 ---
+- name: Install apt dependencies for Neovim
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - python3-venv
+  become: true
+
 - name: Check if curl is installed
   ansible.builtin.command: which curl
   register: curl_check
