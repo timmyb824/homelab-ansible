@@ -237,3 +237,9 @@ all:
           ansible_port: 22
           ansible_user: root
           ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
+        proxmox5:
+          ansible_host: proxmox5.homelab.lan
+          ansible_connection: ssh
+          ansible_port: 22
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_master_key_nopass
