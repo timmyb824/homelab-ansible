@@ -1,0 +1,39 @@
+---
+# Provision a NEW Proxmox node: base tuning (proxmox_node), Tailscale, and Alloy.
+#
+# 1. Add the new node to the `proxmox` group in inventory/hosts.yaml
+#    (for first contact over password auth, see the comment at the top of
+#    inventory/hosts.yaml).
+# 2. Run:
+#      ansible-playbook -i inventory/hosts.yaml server/playbook_new_proxmox_node.yaml --limit <proxmox_node_name>
+#      -e "@dev/roles/tailscale/vars/vault.yaml"
+#      -e "@server/roles/alloy/vars/vault.yaml"
+#      -K
+#    Override txqueuelen interfaces for the node's NIC naming if needed:
+#      -e '{"proxmox_node_txqueue_interfaces": ["enp1s0", "vmbr0"]}'
+#
+# Without -e target_node=..., this runs against the entire `proxmox` group
+# (all tasks are idempotent, so this is safe for re-runs on existing nodes).
+- name: Provision new Proxmox node
+  hosts: "{{ target_node | default('proxmox') }}"
+  become: true
+  gather_facts: true
+  roles:
+    # - role: ../dev/roles/tailscale # noqa: role-name[path]
+    #   tags: [tailscale, vpn]
+
+    # - role: alloy
+    #   alloy_loki_url: "https://loki.local.timmybtech.com/loki/api/v1/push"
+    #   alloy_custom_args: "--server.http.listen-addr=0.0.0.0:12345"
+    #   alloy_state: present # or latest/absent
+    #   tags: [alloy, monitoring, logging]
+
+    # - role: scrutiny_collector
+    #   scrutiny_collector_state: present # or latest/absent
+    #   tags: [scrutiny-collector, monitoring]
+
+    - role: proxmox_node
+      proxmox_node_txqueue_interfaces:
+        - vmbr0
+        - enp1s0
+      tags: [proxmox_node, setup]

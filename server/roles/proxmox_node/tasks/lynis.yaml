@@ -1,0 +1,27 @@
+---
+- name: Proxmox node | Clone Lynis repository
+  ansible.builtin.git:
+    repo: "{{ proxmox_node_lynis_repo }}"
+    dest: "{{ proxmox_node_lynis_dest }}"
+    version: "{{ proxmox_node_lynis_version }}"
+    update: true
+  become: true
+
+- name: Proxmox node | Install Lynis wrapper script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/lynis
+    content: |
+      #!/bin/bash
+      cd {{ proxmox_node_lynis_dest }} && ./lynis "$@"
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Proxmox node | Run Lynis security audit
+  ansible.builtin.command:
+    cmd: /usr/local/bin/lynis audit system
+  become: true
+  when: proxmox_node_lynis_run_audit | bool
+  changed_when: false
+  failed_when: false

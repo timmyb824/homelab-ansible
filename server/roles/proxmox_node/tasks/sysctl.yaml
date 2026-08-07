@@ -1,0 +1,98 @@
+---
+- name: Proxmox node | Configure kernel panic behavior
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-kernelpanic.conf
+    sysctl_set: true
+    reload: true
+  become: true
+  loop:
+    - { name: kernel.panic, value: "{{ proxmox_node_kernel_panic }}" }
+    - { name: kernel.panic_on_oops, value: "{{ proxmox_node_kernel_panic_on_oops }}" }
+
+- name: Proxmox node | Configure inotify max user watches
+  ansible.posix.sysctl:
+    name: fs.inotify.max_user_watches
+    value: "{{ proxmox_node_inotify_max_user_watches }}"
+    sysctl_file: /etc/sysctl.d/99-maxwatches.conf
+    sysctl_set: true
+    reload: true
+  become: true
+
+- name: Proxmox node | Configure memory tuning
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-memory.conf
+    sysctl_set: true
+    reload: true
+  become: true
+  loop:
+    - { name: vm.swappiness, value: "{{ proxmox_node_vm_swappiness }}" }
+    - { name: vm.dirty_ratio, value: "{{ proxmox_node_vm_dirty_ratio }}" }
+    - { name: vm.dirty_background_ratio, value: "{{ proxmox_node_vm_dirty_background_ratio }}" }
+    - { name: vm.overcommit_memory, value: "{{ proxmox_node_vm_overcommit_memory }}" }
+    - { name: vm.max_map_count, value: "{{ proxmox_node_vm_max_map_count }}" }
+
+- name: Proxmox node | Check if kernel supports vm.compaction_proactiveness
+  ansible.builtin.stat:
+    path: /proc/sys/vm/compaction_proactiveness
+  register: proxmox_node_compaction_proactiveness
+
+- name: Proxmox node | Configure memory compaction proactiveness
+  ansible.posix.sysctl:
+    name: vm.compaction_proactiveness
+    value: "{{ proxmox_node_vm_compaction_proactiveness }}"
+    sysctl_file: /etc/sysctl.d/99-memory.conf
+    sysctl_set: true
+    reload: true
+  become: true
+  when: proxmox_node_compaction_proactiveness.stat.exists
+
+- name: Proxmox node | Configure network performance sysctls
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-network-performance.conf
+    sysctl_set: true
+    reload: true
+    ignoreerrors: true
+  become: true
+  loop: "{{ proxmox_node_network_sysctls | dict2items }}"
+
+- name: Proxmox node | Load tcp_bbr kernel module now
+  community.general.modprobe:
+    name: tcp_bbr
+    state: present
+  become: true
+
+- name: Proxmox node | Load tcp_bbr kernel module at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/tcp_bbr.conf
+    content: "tcp_bbr"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Proxmox node | Configure TCP BBR congestion control
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-tcp-bbr.conf
+    sysctl_set: true
+    reload: true
+  become: true
+  loop:
+    - { name: net.core.default_qdisc, value: "fq" }
+    - { name: net.ipv4.tcp_congestion_control, value: "bbr" }
+
+- name: Proxmox node | Configure TCP Fast Open
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_fastopen
+    value: "{{ proxmox_node_tcp_fastopen }}"
+    sysctl_file: /etc/sysctl.d/99-tcp-fastopen.conf
+    sysctl_set: true
+    reload: true
+  become: true

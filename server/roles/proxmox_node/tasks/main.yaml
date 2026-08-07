@@ -1,0 +1,43 @@
+---
+- name: Proxmox node | Assert Debian-based system
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "Debian"
+    fail_msg: "The proxmox_node role only supports Debian-based systems (Proxmox VE)."
+    quiet: true
+
+- name: Proxmox node | Install packages and haveged
+  ansible.builtin.include_tasks: packages.yaml
+  tags: [proxmox_node, packages]
+
+- name: Proxmox node | Configure APT
+  ansible.builtin.include_tasks: apt_config.yaml
+  tags: [proxmox_node, apt]
+
+- name: Proxmox node | Configure sysctl tuning
+  ansible.builtin.include_tasks: sysctl.yaml
+  tags: [proxmox_node, sysctl]
+
+- name: Proxmox node | Configure journald
+  ansible.builtin.include_tasks: journald.yaml
+  tags: [proxmox_node, journald]
+
+- name: Proxmox node | Configure logrotate
+  ansible.builtin.include_tasks: logrotate.yaml
+  tags: [proxmox_node, logrotate]
+
+- name: Proxmox node | Configure PAM limits
+  ansible.builtin.include_tasks: limits.yaml
+  tags: [proxmox_node, limits]
+
+- name: Proxmox node | Configure interface txqueuelen
+  ansible.builtin.include_tasks: network_tuning.yaml
+  tags: [proxmox_node, network]
+
+- name: Proxmox node | Configure vzdump
+  ansible.builtin.include_tasks: vzdump.yaml
+  tags: [proxmox_node, vzdump]
+
+- name: Proxmox node | Install Lynis
+  ansible.builtin.include_tasks: lynis.yaml
+  tags: [proxmox_node, lynis]

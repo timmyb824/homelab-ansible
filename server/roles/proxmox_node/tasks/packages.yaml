@@ -1,0 +1,25 @@
+---
+- name: Proxmox node | Install common system utilities
+  ansible.builtin.apt:
+    name: "{{ proxmox_node_packages }}"
+    state: present
+    update_cache: true
+  become: true
+
+- name: Proxmox node | Configure haveged low-entropy threshold
+  ansible.builtin.copy:
+    dest: /etc/default/haveged
+    content: 'DAEMON_ARGS="{{ proxmox_node_haveged_daemon_args }}"'
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: Restart haveged
+
+- name: Proxmox node | Enable and start haveged
+  ansible.builtin.systemd:
+    name: haveged
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

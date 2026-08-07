@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# ProxMenux optimized configuration
+daily
+su root adm
+rotate 7
+create
+compress
+size=10M
+delaycompress
+copytruncate
+
+include /etc/logrotate.d

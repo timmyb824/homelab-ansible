@@ -1,0 +1,17 @@
+---
+- name: Proxmox node | Set txqueuelen on existing interfaces
+  ansible.builtin.command:
+    cmd: "ip link set {{ item }} txqueuelen {{ proxmox_node_txqueuelen }}"
+  become: true
+  loop: "{{ proxmox_node_txqueue_interfaces }}"
+  when: item in ansible_interfaces
+  changed_when: true
+
+- name: Proxmox node | Persist txqueuelen via udev rule
+  ansible.builtin.template:
+    src: 60-net-txqueue.rules.j2
+    dest: /etc/udev/rules.d/60-net-txqueue.rules
+    owner: root
+    group: root
+    mode: "0644"
+  become: true

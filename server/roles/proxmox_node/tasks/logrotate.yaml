@@ -1,0 +1,12 @@
+---
+# No service restart needed: logrotate runs from cron/systemd timer and
+# re-reads /etc/logrotate.conf on every invocation.
+- name: Proxmox node | Deploy optimized logrotate configuration
+  ansible.builtin.template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  become: true

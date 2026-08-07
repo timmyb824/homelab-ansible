@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+{% for iface in proxmox_node_txqueue_interfaces %}
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="{{ iface }}", RUN+="/sbin/ip link set {{ iface }} txqueuelen {{ proxmox_node_txqueuelen }}"
+{% endfor %}

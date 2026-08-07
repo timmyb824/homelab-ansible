@@ -1,0 +1,115 @@
+---
+# Packages to install on a new Proxmox node
+proxmox_node_packages:
+  - axel
+  - dialog
+  - dos2unix
+  - grc
+  - htop
+  - btop
+  - iftop
+  - iotop
+  - iperf3
+  - ipset
+  - iptraf-ng
+  - msr-tools
+  - net-tools
+  - sshpass
+  - sudo
+  - tmux
+  - unzip
+  - zip
+  - libguestfs-tools
+  - sysstat
+  - haveged
+  - git
+
+# Sysctl: kernel panic behavior
+proxmox_node_kernel_panic: 10
+proxmox_node_kernel_panic_on_oops: 1
+
+# Sysctl: inotify watches (final value you settled on in 99-maxwatches.conf)
+proxmox_node_inotify_max_user_watches: 4194304
+
+# PAM limits: open file descriptors (requires reboot to fully take effect)
+proxmox_node_nofile_soft: 1048576
+
+# journald disk cap
+proxmox_node_journald_system_max_use: 64M
+
+# Sysctl: memory tuning (99-memory.conf)
+proxmox_node_vm_swappiness: 10
+proxmox_node_vm_dirty_ratio: 15
+proxmox_node_vm_dirty_background_ratio: 5
+proxmox_node_vm_overcommit_memory: 1
+proxmox_node_vm_max_map_count: 65530
+proxmox_node_vm_compaction_proactiveness: 20
+
+# haveged entropy daemon args
+proxmox_node_haveged_daemon_args: "-w 1024"
+
+# Sysctl: network performance (99-network-performance.conf)
+proxmox_node_network_sysctls:
+  net.core.netdev_max_backlog: 8192
+  net.core.optmem_max: 8192
+  net.core.rmem_max: 16777216
+  net.core.somaxconn: 8151
+  net.core.wmem_max: 16777216
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.all.log_martians: 0
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.all.secure_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  net.ipv4.conf.default.log_martians: 0
+  net.ipv4.conf.default.rp_filter: 1
+  net.ipv4.conf.default.secure_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  net.ipv4.ip_local_port_range: "1024 65535"
+  net.ipv4.tcp_base_mss: 1024
+  net.ipv4.tcp_challenge_ack_limit: 999999999
+  net.ipv4.tcp_fin_timeout: 10
+  net.ipv4.tcp_keepalive_intvl: 30
+  net.ipv4.tcp_keepalive_probes: 3
+  net.ipv4.tcp_keepalive_time: 240
+  net.ipv4.tcp_limit_output_bytes: 65536
+  net.ipv4.tcp_max_syn_backlog: 8192
+  net.ipv4.tcp_max_tw_buckets: 1440000
+  net.ipv4.tcp_mtu_probing: 1
+  net.ipv4.tcp_rfc1337: 1
+  net.ipv4.tcp_rmem: "8192 87380 16777216"
+  net.ipv4.tcp_sack: 1
+  net.ipv4.tcp_slow_start_after_idle: 0
+  net.ipv4.tcp_syn_retries: 3
+  net.ipv4.tcp_synack_retries: 2
+  net.ipv4.tcp_tw_reuse: 1
+  net.ipv4.tcp_timestamps: 1
+  net.ipv4.tcp_wmem: "8192 65536 16777216"
+  net.netfilter.nf_conntrack_generic_timeout: 60
+  net.netfilter.nf_conntrack_max: 524288
+  net.netfilter.nf_conntrack_tcp_timeout_established: 28800
+  net.unix.max_dgram_qlen: 4096
+
+# Sysctl: TCP BBR congestion control and Fast Open
+proxmox_node_tcp_fastopen: 3
+
+# txqueuelen tuning: interfaces to adjust (udev rule + immediate apply).
+# Interfaces that do not exist on the node are skipped automatically.
+proxmox_node_txqueue_interfaces:
+  - vmbr0
+proxmox_node_txqueuelen: 10000
+
+# vzdump (backup) settings
+proxmox_node_vzdump_bwlimit: 0
+proxmox_node_vzdump_ionice: 5
+
+# Lynis security audit
+proxmox_node_lynis_repo: https://github.com/CISOfy/lynis.git
+proxmox_node_lynis_dest: /opt/lynis
+proxmox_node_lynis_version: master
+# Running the audit produces a lot of output; enable when you want it
+proxmox_node_lynis_run_audit: false

@@ -1,0 +1,10 @@
+---
+- name: Proxmox node | Cap journald disk usage
+  community.general.ini_file:
+    path: /etc/systemd/journald.conf
+    section: Journal
+    option: SystemMaxUse
+    value: "{{ proxmox_node_journald_system_max_use }}"
+    mode: "0644"
+  become: true
+  notify: Restart systemd-journald

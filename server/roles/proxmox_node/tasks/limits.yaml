@@ -1,0 +1,10 @@
+---
+# Note: the nofile limit requires a reboot (or re-login of all sessions) to fully take effect.
+- name: Proxmox node | Raise nofile limit for all users
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/99-limits.conf
+    content: "* soft nofile {{ proxmox_node_nofile_soft }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true

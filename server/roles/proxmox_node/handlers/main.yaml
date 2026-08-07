@@ -1,0 +1,12 @@
+---
+- name: Restart systemd-journald
+  ansible.builtin.service:
+    name: systemd-journald
+    state: restarted
+  become: true
+
+- name: Restart haveged
+  ansible.builtin.service:
+    name: haveged
+    state: restarted
+  become: true

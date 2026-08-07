@@ -1,0 +1,14 @@
+---
+- name: Proxmox node | Configure vzdump backup bandwidth limit
+  ansible.builtin.lineinfile:
+    path: /etc/vzdump.conf
+    regexp: "^#?bwlimit:"
+    line: "bwlimit: {{ proxmox_node_vzdump_bwlimit }}"
+  become: true
+
+- name: Proxmox node | Configure vzdump backup I/O priority
+  ansible.builtin.lineinfile:
+    path: /etc/vzdump.conf
+    regexp: "^#?ionice:"
+    line: "ionice: {{ proxmox_node_vzdump_ionice }}"
+  become: true
