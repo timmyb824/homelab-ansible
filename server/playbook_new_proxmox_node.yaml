@@ -19,18 +19,18 @@
   become: true
   gather_facts: true
   roles:
-    # - role: ../dev/roles/tailscale # noqa: role-name[path]
-    #   tags: [tailscale, vpn]
+    - role: ../dev/roles/tailscale # noqa: role-name[path]
+      tags: [tailscale, vpn]
 
-    # - role: alloy
-    #   alloy_loki_url: "https://loki.local.timmybtech.com/loki/api/v1/push"
-    #   alloy_custom_args: "--server.http.listen-addr=0.0.0.0:12345"
-    #   alloy_state: present # or latest/absent
-    #   tags: [alloy, monitoring, logging]
+    - role: alloy
+      alloy_loki_url: "https://loki.local.timmybtech.com/loki/api/v1/push"
+      alloy_custom_args: "--server.http.listen-addr=0.0.0.0:12345"
+      alloy_state: present # or latest/absent
+      tags: [alloy, monitoring, logging]
 
-    # - role: scrutiny_collector
-    #   scrutiny_collector_state: present # or latest/absent
-    #   tags: [scrutiny-collector, monitoring]
+    - role: scrutiny_collector
+      scrutiny_collector_state: present # or latest/absent
+      tags: [scrutiny-collector, monitoring]
 
     - role: proxmox_node
       proxmox_node_txqueue_interfaces:
