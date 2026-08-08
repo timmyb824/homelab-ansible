@@ -12,8 +12,10 @@ proxmox_node_packages:
   - iperf3
   - ipset
   - iptraf-ng
+  - lm-sensors
   - msr-tools
   - net-tools
+  - nvme-cli
   - sshpass
   - sudo
   - tmux
