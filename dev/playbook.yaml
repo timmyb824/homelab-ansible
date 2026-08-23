@@ -86,6 +86,11 @@
       tags: [uv, dev_tools]
       uv_install_tools: true
 
+    - role: bin
+      bin_state: present
+      bin_install_packages: true
+      tags: [bin, dev_tools]
+
     - role: tfenv
       tf_version: "latest"
       tags: [tfenv, terraform]

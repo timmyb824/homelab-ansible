@@ -1,0 +1,5 @@
+---
+# No additional prerequisites needed on macOS; get_url handles downloads.
+- name: Bin | macOS prerequisites
+  ansible.builtin.debug:
+    msg: "No macOS-specific prerequisites for bin"

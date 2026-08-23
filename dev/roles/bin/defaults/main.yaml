@@ -1,0 +1,10 @@
+---
+bin_state: present # Can be 'present' or 'absent'
+bin_version: "0.29.1"
+bin_install_dir: "{{ ansible_env.HOME }}/.local/bin"
+bin_config_file: "{{ ansible_env.HOME }}/.bin/config.json"
+# Gist with per-OS package lists: bin_darwin.list, bin_linux.list
+bin_packages_gist_url: "https://gist.githubusercontent.com/timmyb824/807597f33b14eceeb26e4e6f81d45962/raw/bin_{{ ansible_system | lower }}.list"
+bin_install_packages: false
+# Optional GitHub token to avoid API rate limits (sets GITHUB_AUTH_TOKEN)
+bin_github_token: ""
