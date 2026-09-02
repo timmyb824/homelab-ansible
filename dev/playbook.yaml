@@ -88,7 +88,7 @@
 
     - role: bin
       bin_state: present
-      bin_install_packages: true
+      bin_install_packages: false
       tags: [bin, dev_tools]
 
     - role: tfenv

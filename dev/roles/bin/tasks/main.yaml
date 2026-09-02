@@ -17,9 +17,12 @@
       aarch64: arm64
       arm64: arm64
 
-- name: Bin | Build release asset name and download URL
+- name: Bin | Build release asset name
   ansible.builtin.set_fact:
     bin_asset_name: "bin_{{ bin_version }}_{{ bin_os }}_{{ bin_arch }}"
+
+- name: Bin | Build release download URL
+  ansible.builtin.set_fact:
     bin_download_url: "https://github.com/marcosnils/bin/releases/download/v{{ bin_version }}/{{ bin_asset_name }}"
 
 - name: Bin | Include OS-specific tasks
@@ -55,6 +58,23 @@
           - bin_checksum | length > 0
         fail_msg: "Could not find checksum for {{ bin_asset_name }} in checksums.txt"
         quiet: true
+
+    - name: Bin | Ensure bin config directory exists
+      ansible.builtin.file:
+        path: "{{ bin_config_file | dirname }}"
+        state: directory
+        mode: "0755"
+
+    - name: Bin | Seed bin config with default download path
+      ansible.builtin.copy:
+        dest: "{{ bin_config_file }}"
+        content: |
+          {
+              "default_path": "{{ bin_install_dir }}",
+              "bins": {}
+          }
+        mode: "0644"
+        force: false
 
     - name: Bin | Download bin release binary
       ansible.builtin.get_url:

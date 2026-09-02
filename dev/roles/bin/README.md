@@ -13,10 +13,13 @@ Installs [bin](https://github.com/marcosnils/bin), a binary manager, and
 
 1. Downloads the pinned `bin` release asset (checksum-verified against the
    release `checksums.txt`).
-2. Runs `bin install github.com/marcosnils/bin ~/.local/bin/` so `bin` is
+2. Seeds `~/.config/bin/config.json` with `default_path` set to
+   `bin_install_dir` (only if it doesn't already exist) so `bin`'s first-run
+   "pick a default download dir" prompt is never triggered non-interactively.
+3. Runs `bin install github.com/marcosnils/bin ~/.local/bin/` so `bin` is
    managed by itself, then verifies with `bin ls` and removes the bootstrap
    download.
-3. If `bin_install_packages: true`, fetches the per-OS package list from the
+4. If `bin_install_packages: true`, fetches the per-OS package list from the
    gist (`bin_darwin.list`, `bin_linux.list`) and runs `bin install <repo>`
    for each entry. Entries that are already installed exit non-zero
    ("file exists") and are skipped without failing the run.
@@ -46,7 +49,7 @@ Installs [bin](https://github.com/marcosnils/bin), a binary manager, and
 - Package list entries must be unambiguous for `bin`'s automatic asset
   scoring (single obvious asset per platform), otherwise `bin` prompts
   interactively. Prefer full release URLs for tricky packages.
-- `bin_state: absent` removes the `bin` binary and `~/.bin/config.json`;
+- `bin_state: absent` removes the `bin` binary and `~/.config/bin/config.json`;
   binaries installed by `bin` are left in place.
 
 ## License
