@@ -59,6 +59,42 @@
         fail_msg: "Could not find checksum for {{ bin_asset_name }} in checksums.txt"
         quiet: true
 
+    # bin's own XDG resolution would land on ~/.config/bin/config.json when
+    # ~/.config exists, which collides with unrelated uses of ~/.config/bin.
+    # We pin bin_config_file to ~/.bin/config.json instead and force every
+    # bin invocation below to that exact file via BIN_CONFIG, so bin never
+    # falls back to ~/.config/bin regardless of what exists on the host.
+    - name: Bin | Check for legacy config under ~/.config/bin
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.config/bin/config.json"
+      register: bin_legacy_config_stat
+
+    - name: Bin | Check for config already at pinned location
+      ansible.builtin.stat:
+        path: "{{ bin_config_file }}"
+      register: bin_new_config_stat
+
+    - name: Bin | Migrate legacy ~/.config/bin/config.json to pinned location
+      when: bin_legacy_config_stat.stat.exists and not bin_new_config_stat.stat.exists
+      block:
+        - name: Bin | Ensure pinned config directory exists (migration)
+          ansible.builtin.file:
+            path: "{{ bin_config_file | dirname }}"
+            state: directory
+            mode: "0755"
+
+        - name: Bin | Copy legacy config to pinned location
+          ansible.builtin.copy:
+            src: "{{ ansible_env.HOME }}/.config/bin/config.json"
+            dest: "{{ bin_config_file }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Bin | Remove legacy config file
+          ansible.builtin.file:
+            path: "{{ ansible_env.HOME }}/.config/bin/config.json"
+            state: absent
+
     - name: Bin | Ensure bin config directory exists
       ansible.builtin.file:
         path: "{{ bin_config_file | dirname }}"
@@ -89,11 +125,14 @@
         creates: "{{ bin_install_dir }}/bin"
       environment:
         GITHUB_AUTH_TOKEN: "{{ bin_github_token }}"
+        BIN_CONFIG: "{{ bin_config_file }}"
 
     - name: Bin | Verify bin installation
       ansible.builtin.command: "{{ bin_install_dir }}/bin ls"
       register: bin_ls
       changed_when: false
+      environment:
+        BIN_CONFIG: "{{ bin_config_file }}"
 
     - name: Bin | Assert bin is tracked by itself
       ansible.builtin.assert:
@@ -148,6 +187,7 @@
       failed_when: false
       environment:
         GITHUB_AUTH_TOKEN: "{{ bin_github_token }}"
+        BIN_CONFIG: "{{ bin_config_file }}"
       when: bin_install_packages | bool and bin_packages is defined
 
     - name: Bin | Debug package installation results
