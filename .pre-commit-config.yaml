@@ -32,7 +32,7 @@ repos:
         stages: ["pre-commit"]
 
   - repo: https://github.com/timmyb824/sops-file-encryption-check
-    rev: latest
+    rev: v1.0.0
     hooks:
       - id: sops-encryption-check
 #
