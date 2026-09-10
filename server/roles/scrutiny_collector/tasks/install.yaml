@@ -53,6 +53,7 @@
   become: true
   when: scrutiny_collector_run_once | bool
 
+# on host: verify with `crontab -l -u root`
 - name: Scrutiny Collector | Install hourly cron
   ansible.builtin.cron:
     name: "Scrutiny Collector"
