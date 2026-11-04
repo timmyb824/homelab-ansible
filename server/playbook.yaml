@@ -47,7 +47,7 @@
       tags: [podman_image_prune, maintenance]
 
     - role: unbound
-      unbound_version: "1.24.2"
+      unbound_version: "1.26.2"
       tags: [unbound, dns, upgrade]
 
 - name: Upgrade Prometheus
