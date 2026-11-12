@@ -114,16 +114,19 @@
   become_user: "{{ podman_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ podman_uid }}"
+  # In --check mode on a fresh host the package is not installed, so the unit does not exist yet.
+  when: not (ansible_check_mode and podman_apt.changed)
 
 - name: Podman | Enable and start root podman.socket
   ansible.builtin.systemd:
     name: podman.socket
     enabled: true
     state: started
+  when: not (ansible_check_mode and podman_apt.changed)
 
 # Socket activation restarts the service on demand with the new binary.
 - name: Podman | Stop running podman.service after an upgrade  # noqa: no-handler
-  when: podman_apt.changed
+  when: podman_apt.changed and not ansible_check_mode
   block:
     - name: Podman | Stop rootless podman.service
       ansible.builtin.systemd:
