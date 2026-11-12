@@ -1,116 +1,148 @@
 ---
-- name: Download Podman repo Release.key
-  ansible.builtin.get_url:
-    url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_{{ podman_ubuntu_series }}/Release.key"
-    dest: /tmp/podman-release.key
-    mode: "0644"
-  become: true
+- name: Podman | Configure apt repository
+  ansible.builtin.include_tasks: repo.yaml
 
-- name: Convert Release.key to gpg keyring (dearmor, trusted.gpg.d)
-  ansible.builtin.command: >
-    gpg --dearmor -o /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg /tmp/podman-release.key
-  args:
-    creates: /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg
-  become: true
-
-- name: Add Podman Kubic repo (NO signed-by)
-  ansible.builtin.apt_repository:
-    repo: "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_{{ podman_ubuntu_series }}/ /"
-    filename: devel:kubic:libcontainers:unstable
-    state: present
-  become: true
-
-- name: Podman | Install podman and plugins
+- name: Podman | Install podman and dependencies
   ansible.builtin.apt:
-    name:
-      - podman
-      - podman-plugins
-    state: present
+    name: "{{ podman_packages }}"
+    state: "{{ 'latest' if podman_state == 'latest' else 'present' }}"
     update_cache: true
-  become: true
+    cache_valid_time: 3600
+  register: podman_apt
 
-- name: Podman | Install podman-compose (if uv present)
-  ansible.builtin.command: |
-    export PATH="{{ ansible_user_dir }}/.local/bin:$PATH"
-    uv tool install podman-compose
-  args:
-    creates: "/home/{{ podman_user }}/.local/bin/podman-compose"
-  when: podman_compose_manage
-  become: true
-  become_user: "{{ podman_user }}"
-  ignore_errors: true
+- name: Podman | Install podman-compose
+  when: podman_compose_manage | bool
+  block:
+    - name: Podman | Check for uv
+      ansible.builtin.stat:
+        path: "{{ podman_home }}/.local/bin/uv"
+      register: podman_uv
 
-- name: Ensure user containers config directory exists
+    - name: Podman | Install podman-compose with uv
+      ansible.builtin.command: "{{ podman_home }}/.local/bin/uv tool install podman-compose"
+      args:
+        creates: "{{ podman_home }}/.local/bin/podman-compose"
+      become: true
+      become_user: "{{ podman_user }}"
+      when: podman_uv.stat.exists
+
+    - name: Podman | Upgrade podman-compose with uv
+      ansible.builtin.command: "{{ podman_home }}/.local/bin/uv tool upgrade podman-compose"
+      become: true
+      become_user: "{{ podman_user }}"
+      register: podman_compose_upgrade
+      changed_when: "'Updated' in podman_compose_upgrade.stderr"
+      when:
+        - podman_uv.stat.exists
+        - podman_state == 'latest'
+
+    - name: Podman | Skip podman-compose (uv not found)
+      ansible.builtin.debug:
+        msg: "uv not found at {{ podman_home }}/.local/bin/uv; skipping podman-compose"
+      when: not podman_uv.stat.exists
+
+- name: Podman | Ensure user containers config directories exist
   ansible.builtin.file:
-    path: "/home/{{ podman_user }}/.config/containers"
+    path: "{{ podman_home }}/.config/{{ item }}"
     state: directory
     owner: "{{ podman_user }}"
+    group: "{{ podman_user }}"
     mode: "0755"
-  become: true
+  loop:
+    - containers
+    - containers/registries.conf.d
 
-- name: Podman | Copy registries.conf to user config
-  ansible.builtin.copy:
-    src: /etc/containers/registries.conf
-    dest: "/home/{{ podman_user }}/.config/containers/registries.conf"
-    owner: "{{ podman_user }}"
-    mode: "0777"
-    remote_src: true
-  become: true
-
-- name: Podman | Append search registries
+# Earlier versions of this role copied /etc/containers/registries.conf here and appended
+# this line, which breaks parsing once the drop-in below also sets the key.
+- name: Podman | Remove legacy appended registries line
   ansible.builtin.lineinfile:
-    path: "/home/{{ podman_user }}/.config/containers/registries.conf"
-    line: 'unqualified-search-registries = ["docker.io","quay.io","container-registry.oracle.com","ghcr.io","lscr.io"]'
-    insertafter: EOF
-    state: present
-  become: true
+    path: "{{ podman_home }}/.config/containers/registries.conf"
+    regexp: '^unqualified-search-registries = \["docker\.io","quay\.io","container-registry\.oracle\.com","ghcr\.io","lscr\.io"\]$'
+    state: absent
+    backup: true
+
+- name: Podman | Set unqualified search registries
+  ansible.builtin.copy:
+    dest: "{{ podman_home }}/.config/containers/registries.conf.d/00-search.conf"
+    content: |
+      unqualified-search-registries = {{ podman_search_registries | to_json }}
+    owner: "{{ podman_user }}"
+    group: "{{ podman_user }}"
+    mode: "0644"
 
 - name: Podman | Enable lingering for user
-  ansible.builtin.command: loginctl enable-linger {{ podman_user }}
-  become: true
-  ignore_errors: true
+  ansible.builtin.command: "loginctl enable-linger {{ podman_user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ podman_user }}"
 
 - name: Podman | Set privileged port sysctl
   ansible.builtin.copy:
     dest: /etc/sysctl.d/podman-privileged-ports.conf
     content: |
       # Lowering privileged ports to allow us to run rootless Podman containers on lower ports
-      # From: www.smarthomebeginner.com
       net.ipv4.ip_unprivileged_port_start={{ podman_privileged_port }}
     owner: root
     group: root
     mode: "0644"
-  become: true
+  register: podman_sysctl_file
 
-- name: Podman | Apply sysctl config
-  ansible.builtin.command: sysctl --load /etc/sysctl.d/podman-privileged-ports.conf
-  become: true
-  ignore_errors: true
+# Fails inside unprivileged containers (LXC) where /proc/sys is read-only; the file
+# above is still persisted, so only warn.
+- name: Podman | Apply privileged port sysctl
+  ansible.builtin.command: "sysctl -w net.ipv4.ip_unprivileged_port_start={{ podman_privileged_port }}"
+  register: podman_sysctl_apply
+  changed_when: podman_sysctl_file.changed
+  failed_when: false
 
-- name: Podman | Create systemd user dir
-  ansible.builtin.file:
-    path: "/home/{{ podman_user }}/.config/systemd/user"
-    state: directory
-    owner: "{{ podman_user }}"
-    mode: "0755"
-  become: true
+- name: Podman | Warn if sysctl could not be applied live
+  ansible.builtin.debug:
+    msg: "Could not apply sysctl now ({{ podman_sysctl_apply.stderr | default('') }}); it is persisted in /etc/sysctl.d."
+  when: podman_sysctl_apply.rc != 0
+
+- name: Podman | Wait for user runtime directory
+  ansible.builtin.wait_for:
+    path: "/run/user/{{ podman_uid }}/bus"
+    timeout: 30
 
 - name: Podman | Enable and start rootless podman.socket
-  ansible.builtin.command: systemctl --user enable --now podman.socket
-  become: false
-  ignore_errors: true
+  ansible.builtin.systemd:
+    name: podman.socket
+    scope: user
+    enabled: true
+    state: started
+  become: true
+  become_user: "{{ podman_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ podman_uid }}"
 
 - name: Podman | Enable and start root podman.socket
-  ansible.builtin.command: sudo systemctl enable --now podman.socket
-  become: true
-  ignore_errors: true
+  ansible.builtin.systemd:
+    name: podman.socket
+    enabled: true
+    state: started
 
-- name: Podman | Optionally symlink podman to docker
+# Socket activation restarts the service on demand with the new binary.
+- name: Podman | Stop running podman.service after an upgrade  # noqa: no-handler
+  when: podman_apt.changed
+  block:
+    - name: Podman | Stop rootless podman.service
+      ansible.builtin.systemd:
+        name: podman.service
+        scope: user
+        state: stopped
+      become: true
+      become_user: "{{ podman_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ podman_uid }}"
+
+    - name: Podman | Stop root podman.service
+      ansible.builtin.systemd:
+        name: podman.service
+        state: stopped
+
+- name: Podman | Symlink docker.sock to podman.sock
   ansible.builtin.file:
     src: /run/podman/podman.sock
     dest: /var/run/docker.sock
     state: link
-    force: false
-  when: podman_symlink_docker
-  become: true
-  ignore_errors: true
+  when: podman_symlink_docker | bool

@@ -1,8 +1,26 @@
 ---
-podman_state: present # present | absent | latest
-podman_compose_manage: true
-podman_symlink_docker: false
-podman_privileged_port: 80
-podman_ubuntu_release: "jammy"
-podman_ubuntu_series: "22.04"
+# present: install if missing | latest: install and upgrade to newest available | absent: remove
+podman_state: present
+
 podman_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+
+podman_compose_manage: true  # installs podman-compose with uv (skipped if uv is not installed for podman_user)
+podman_symlink_docker: false  # link /var/run/docker.sock -> /run/podman/podman.sock
+podman_privileged_port: 80  # net.ipv4.ip_unprivileged_port_start
+podman_purge_user_config: false  # on uninstall, delete all of ~/.config/containers (incl. auth.json, storage.conf)
+podman_search_registries:
+  - docker.io
+  - quay.io
+  - container-registry.oracle.com
+  - ghcr.io
+  - lscr.io
+
+# The Kubic repo is frozen (podman 4.6.2, last built 2023) but is still newer than
+# Ubuntu 22.04's own podman (3.4.x). Ubuntu 24.04 (4.9) and Debian 12 (4.3) are
+# better served by their own repos, so only 22.04 defaults to Kubic.
+podman_use_kubic_repo: "{{ ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04' }}"
+podman_kubic_ubuntu_series: "{{ ansible_distribution_version }}"
+
+podman_packages: >-
+  {{ ['podman', 'uidmap', 'dbus-user-session', 'acl']
+     + (['podman-plugins'] if podman_use_kubic_repo | bool else []) }}

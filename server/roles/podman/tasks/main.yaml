@@ -1,11 +1,26 @@
 ---
-- name: Map podman_state to task file
-  ansible.builtin.set_fact:
-    podman_task_file: >-
-      {{ 'install.yaml' if podman_state == 'present'
-         else 'update.yaml' if podman_state == 'latest'
-         else 'uninstall.yaml' if podman_state == 'absent'
-         else 'install.yaml' }}
+- name: Podman | Validate inputs
+  ansible.builtin.assert:
+    that:
+      - podman_state in ['present', 'latest', 'absent']
+      - ansible_os_family == 'Debian'
+    fail_msg: "podman_state must be present, latest or absent, and this role supports Debian/Ubuntu only"
+    quiet: true
 
-- name: Podman | Ensure state is correct
-  ansible.builtin.include_tasks: "{{ podman_task_file }}"
+- name: Podman | Look up target user
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ podman_user }}"
+
+- name: Podman | Set user facts
+  ansible.builtin.set_fact:
+    podman_uid: "{{ getent_passwd[podman_user][1] }}"
+    podman_home: "{{ getent_passwd[podman_user][4] }}"
+
+- name: Podman | Remove podman
+  ansible.builtin.include_tasks: uninstall.yaml
+  when: podman_state == 'absent'
+
+- name: Podman | Install or update podman
+  ansible.builtin.include_tasks: install.yaml
+  when: podman_state != 'absent'

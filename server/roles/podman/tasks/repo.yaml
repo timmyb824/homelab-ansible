@@ -1,0 +1,62 @@
+---
+# Legacy artifacts from earlier versions of this role (unsigned-by key in trusted.gpg.d)
+- name: Podman | Remove legacy Kubic repo file and key
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list"
+    - /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg
+  register: podman_legacy_repo
+
+- name: Podman | Kubic repo
+  when: podman_use_kubic_repo | bool
+  block:
+    - name: Podman | Install repo prerequisites
+      ansible.builtin.apt:
+        name: [ca-certificates]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Podman | Ensure apt keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Podman | Download Kubic signing key
+      ansible.builtin.get_url:
+        url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_{{ podman_kubic_ubuntu_series }}/Release.key"
+        dest: /etc/apt/keyrings/devel-kubic-libcontainers-unstable.asc
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Podman | Add Kubic repo
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
+        content: >
+          deb [signed-by=/etc/apt/keyrings/devel-kubic-libcontainers-unstable.asc]
+          https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_{{ podman_kubic_ubuntu_series }}/ /
+        owner: root
+        group: root
+        mode: "0644"
+      register: podman_kubic_repo
+
+- name: Podman | Remove Kubic repo when not in use
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
+    state: absent
+  when: not (podman_use_kubic_repo | bool)
+  register: podman_kubic_repo_removed
+
+- name: Podman | Refresh apt cache after repo changes
+  ansible.builtin.apt:
+    update_cache: true
+  when: >
+    podman_legacy_repo.changed
+    or (podman_kubic_repo is defined and podman_kubic_repo.changed)
+    or (podman_kubic_repo_removed is defined and podman_kubic_repo_removed.changed)

@@ -1,66 +1,89 @@
 ---
-- name: Podman | Stop user podman services
-  ansible.builtin.command: systemctl --user stop podman.socket podman.service
-  become: false
-  ignore_errors: true
-
-- name: Podman | Stop root podman services
-  ansible.builtin.command: sudo systemctl stop podman.socket podman.service
+# Stop failures are tolerated: the units are absent if podman was never installed.
+- name: Podman | Stop rootless podman units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    scope: user
+    state: stopped
+    enabled: false
+  loop: [podman.socket, podman.service]
   become: true
-  ignore_errors: true
+  become_user: "{{ podman_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ podman_uid }}"
+  failed_when: false
 
-- name: Podman | Remove podman and plugins
+- name: Podman | Stop root podman units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop: [podman.socket, podman.service]
+  failed_when: false
+
+- name: Podman | Check for podman-compose
+  ansible.builtin.stat:
+    path: "{{ podman_home }}/.local/bin/podman-compose"
+  register: podman_compose_bin
+
+- name: Podman | Remove podman-compose
+  ansible.builtin.command: "{{ podman_home }}/.local/bin/uv tool uninstall podman-compose"
+  become: true
+  become_user: "{{ podman_user }}"
+  changed_when: true
+  when:
+    - podman_compose_manage | bool
+    - podman_compose_bin.stat.exists
+
+- name: Podman | Remove podman packages
   ansible.builtin.apt:
-    name: podman
+    name: "{{ podman_packages }}"
     state: absent
     purge: true
-  become: true
+    autoremove: true
 
-- name: Podman | Remove repo
+- name: Podman | Remove Kubic repo and key
   ansible.builtin.file:
-    path: /etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list
+    path: "{{ item }}"
     state: absent
-  become: true
-
-- name: Podman | Remove GPG key
-  ansible.builtin.file:
-    path: /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg
-    state: absent
-  become: true
+  loop:
+    - /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
+    - /etc/apt/keyrings/devel-kubic-libcontainers-unstable.asc
+    - "/etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list"
+    - /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg
 
 - name: Podman | Update apt cache
   ansible.builtin.apt:
-    update_cache: yes
-  become: true
+    update_cache: true
+    cache_valid_time: 3600
 
-- name: Podman | Remove podman-compose (if uv present)
-  ansible.builtin.command: |
-    export PATH="/home/{{ podman_user }}/.local/bin:$PATH"
-    uv tool uninstall podman-compose
-  when: podman_compose_manage
-  become: true
-  ignore_errors: true
-
-- name: Podman | Remove user config dir
+# Only the file this role manages; the rest of ~/.config/containers (auth.json, storage.conf) is left alone.
+- name: Podman | Remove registries drop-in
   ansible.builtin.file:
-    path: "/home/{{ podman_user }}/.config/containers"
+    path: "{{ podman_home }}/.config/containers/registries.conf.d/00-search.conf"
     state: absent
-  become: true
 
-- name: Podman | Disable lingering for user
-  ansible.builtin.command: loginctl disable-linger {{ podman_user }}
-  become: true
-  ignore_errors: true
+- name: Podman | Purge user containers config directory
+  ansible.builtin.file:
+    path: "{{ podman_home }}/.config/containers"
+    state: absent
+  when: podman_purge_user_config | bool
 
 - name: Podman | Remove sysctl config
   ansible.builtin.file:
     path: /etc/sysctl.d/podman-privileged-ports.conf
     state: absent
-  become: true
 
+- name: Podman | Check docker.sock
+  ansible.builtin.stat:
+    path: /var/run/docker.sock
+  register: podman_docker_sock
+
+# Only remove it if it is the symlink this role would have created, never a real Docker socket.
 - name: Podman | Remove docker.sock symlink
   ansible.builtin.file:
     path: /var/run/docker.sock
     state: absent
-  become: true
-  ignore_errors: true
+  when:
+    - podman_docker_sock.stat.islnk | default(false)
+    - podman_docker_sock.stat.lnk_source == '/run/podman/podman.sock'
