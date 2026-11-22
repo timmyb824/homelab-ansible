@@ -19,11 +19,15 @@
   failed_when: false
   changed_when: false
 
+- name: Track which users already exist
+  ansible.builtin.set_fact:
+    existing_users: "{{ user_check.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | list }}"
+
 - name: Create users
   ansible.builtin.user:
     name: "{{ item }}"
     password: "{{ user_password | password_hash('sha512') }}" # Removed explicit salt
-    shell: /bin/bash
+    shell: "{{ omit if item in existing_users else '/bin/bash' }}"
     groups: sudo
     append: true
     create_home: true
