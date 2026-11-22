@@ -16,7 +16,7 @@
         - name: Upgrade apt packages
           become: true
           ansible.builtin.apt:
-            upgrade: true
+            upgrade: "{{ 'dist' if 'proxmox' in group_names else 'yes' }}"
             update_cache: false
 
     # RedHat family systems
